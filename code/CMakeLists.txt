@@ -24,11 +24,20 @@ if (cisst_FOUND_AS_REQUIRED)
   # load cisst configuration
   include (${CISST_USE_FILE})
 
+  # this should be replaced by a find AtracsysFusionTrack
+  set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
+  include_directories (${atracsys_DIR}/include
+                       ${atracsys_DIR}/bin)
+  if (WIN32)
+    set (atracsys_LIBRARIES winmm "${atracsys_DIR}/lib/fusionTrack64.lib")
+  else (WIN32)
+    set (atracsys_LIBRARIES pthread rt "${atracsys_DIR}/lib/fusionTrack64.lib")
+  endif (WIN32)
+
   # create/configure file for find_package (sawAtracsysFusionTrack)
-  set (sawAtracsysFusionTrack_INCLUDE_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include" "${sawAtracsysFusionTrack_BINARY_DIR}")
+  set (sawAtracsysFusionTrack_INCLUDE_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include")
   set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
-  set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack)
-  set (sawAtracsysFusionTrackQt_LIBRARIES sawAtracsysFusionTrackQt)
+  set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
   include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR} ${sawAtracsysFusionTrack_BINARY_DIR})
   set (sawAtracsysFusionTrack_HEADER_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack")
@@ -39,6 +48,7 @@ if (cisst_FOUND_AS_REQUIRED)
                ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
   set_property (TARGET sawAtracsysFusionTrack PROPERTY FOLDER "sawAtracsysFusionTrack")
   cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
+  target_link_libraries (sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
   configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/sawAtracsysFusionTrackConfig.cmake.in"
                   "${sawAtracsysFusionTrack_BINARY_DIR}/sawAtracsysFusionTrackConfig.cmake"

@@ -24,6 +24,8 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackExport.h>  // always include last
 
+// forward declarations for internal data
+class mtsAtracsysFusionTrackInternals;
 
 class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 {
@@ -66,7 +68,8 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     std::string GetToolName(const size_t index) const;
 
- protected:
+protected:
+    mtsAtracsysFusionTrackInternals * Internals;
     typedef cmnNamedMap<Tool> ToolsType;
     ToolsType Tools;
     cmnNamedMap<Tool> PortToTool;

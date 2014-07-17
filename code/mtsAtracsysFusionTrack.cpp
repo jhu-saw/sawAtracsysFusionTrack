@@ -16,15 +16,40 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
-#include <cisstCommon/cmnStrings.h>
+#include <ftkInterface.h>
+
 #include <cisstMultiTask/mtsInterfaceProvided.h>
 
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 
+
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
+
+class mtsAtracsysFusionTrackInternals
+{
+public:
+    mtsAtracsysFusionTrackInternals(void) :
+        Library(0),
+        Device(0)
+    {};
+    ftkLibrary Library;
+    uint64 Device;
+};
+
+
+void mtsAtracsysFusionTrackDeviceEnum(uint64 sn, void * user, ftkDeviceType type)
+{
+    uint64 * lastDevice =reinterpret_cast<uint64 *>(user);
+    if (lastDevice) {
+        *lastDevice = sn;
+    }
+}
+
 
 void mtsAtracsysFusionTrack::Construct(void)
 {
+    Internals = new mtsAtracsysFusionTrackInternals();
+
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
 //        provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
@@ -34,11 +59,33 @@ void mtsAtracsysFusionTrack::Construct(void)
 
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
+    Internals->Library = ftkInit();
+    if (!Internals->Library) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to initialize (" << this->GetName() << ")" << std::endl;
+        return;
+    }
+
+   
+    // Scan for devices
+    ftkError error = ftkEnumerateDevices(Internals->Library,
+                                         mtsAtracsysFusionTrackDeviceEnum,
+                                         &(Internals->Device));
+    if (error != FTK_OK) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
+        ftkClose(Internals->Library);
+    }
+    if (Internals->Device == 0) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
+        ftkClose(Internals->Library);
+        return;
+    }
+    std::cerr << "configure" << std::endl;
 }
 
 
 void mtsAtracsysFusionTrack::Run(void)
 {
+    // std::cerr << "running" << std::endl;
     ProcessQueuedCommands();
 }
 

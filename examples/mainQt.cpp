@@ -57,8 +57,8 @@ int main(int argc, char * argv[])
 		std::cerr << "Failed to find configuration: " << configPath << std::endl;
 		return 1;
 	}
-    componentNDISerial->Configure(configPath);
 #endif
+    tracker->Configure("empty");
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
