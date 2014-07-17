@@ -25,12 +25,9 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
-#include <cisstOSAbstraction/osaThreadedLogFile.h>
 #include <cisstMultiTask/mtsCollectorState.h>
 #include <cisstMultiTask/mtsTaskManager.h>
-#include <sawNDITracker/mtsNDISerial.h>
-#include <sawNDITracker/mtsNDISerialControllerQtComponent.h>
-#include <sawNDITracker/mtsNDISerialToolQtComponent.h>
+#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -42,16 +39,16 @@ int main(int argc, char * argv[])
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClassMatching("mtsNDISerial", CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create a Qt user interface
     QApplication application(argc, argv);
 
     // create the components
-    mtsNDISerial * componentNDISerial = new mtsNDISerial("componentNDISerial", 50.0 * cmn_ms);
-    mtsNDISerialControllerQtComponent * componentControllerQtComponent = new mtsNDISerialControllerQtComponent("componentControllerQtComponent");
+    mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
 
+#if 0
     // configure the components
     cmnPath searchPath;
     searchPath.Add(cmnPath::GetWorkingDirectory());
@@ -61,12 +58,13 @@ int main(int argc, char * argv[])
 		return 1;
 	}
     componentNDISerial->Configure(configPath);
+#endif
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
-    componentManager->AddComponent(componentNDISerial);
-    componentManager->AddComponent(componentControllerQtComponent);
+    componentManager->AddComponent(tracker);
 
+#if 0
     // connect the components, e.g. RequiredInterface -> ProvidedInterface
     componentManager->Connect(componentControllerQtComponent->GetName(), "Controller",
                               componentNDISerial->GetName(), "Controller");
@@ -93,17 +91,11 @@ int main(int argc, char * argv[])
     componentCollector->Connect();
     componentManager->Connect(componentControllerQtComponent->GetName(), "DataCollector",
                               componentCollector->GetName(), "Control");
+#endif
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
-
-    // create a main window to hold QWidgets
-    QMainWindow * mainWindow = new QMainWindow();
-    mainWindow->setCentralWidget(componentControllerQtComponent->GetWidget());
-    mainWindow->setWindowTitle("NDI Serial Controller");
-    mainWindow->resize(0,0);
-    mainWindow->show();
 
     // run Qt user interface
     application.exec();
@@ -111,6 +103,8 @@ int main(int argc, char * argv[])
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);
     componentManager->Cleanup();
+
+    cmnLogger::Kill();
 
     return 0;
 }

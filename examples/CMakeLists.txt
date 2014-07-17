@@ -1,7 +1,5 @@
 #
-#
-# (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights
-# Reserved.
+# (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -12,11 +10,13 @@
 # --- end cisst license ---
 
 # create a list of required cisst libraries
-set (REQUIRED_CISST_LIBRARIES cisstCommon cisstCommonQt cisstCommonXML
+set (REQUIRED_CISST_LIBRARIES cisstCommon
+                              cisstCommonQt
                               cisstVector
-                              cisstNumerical
+                              cisstVectorQt
                               cisstOSAbstraction
                               cisstMultiTask
+                              cisstMultiTaskQt
                               cisstParameterTypes)
 
 # find cisst and make sure the required libraries have been compiled
@@ -28,37 +28,26 @@ if (cisst_FOUND)
   include (${CISST_USE_FILE})
 
   # sawNDITracker has been compiled within cisst, we should find it automatically
-  cisst_find_saw_component (sawNDITracker REQUIRED)
+  cisst_find_saw_component (sawAtracsysFusionTrack REQUIRED)
 
-  if (sawNDITracker_FOUND)
+  if (sawAtracsysFusionTrack_FOUND)
 
-    # sawNDITracker configuration
-    include_directories (${sawNDITracker_INCLUDE_DIR})
-    link_directories (${sawNDITracker_LIBRARY_DIR})
+    # sawAtracsysFusionTrack configuration
+    include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
+    link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
 
-    add_executable (sawNDITrackerQtExample mainQt.cpp)
-    set_property (TARGET sawNDITrackerQtExample PROPERTY FOLDER "sawNDITracker")
+    add_executable (sawAtracsysFusionTrackQtExample mainQt.cpp)
+    set_property (TARGET sawAtracsysFusionTrackQtExample PROPERTY FOLDER "sawAtracsysFusionTrack")
 
     # link against non cisst libraries and saw components
-    target_link_libraries (sawNDITrackerQtExample
-                           ${sawNDITracker_LIBRARIES}
-                           ${sawNDITrackerQt_LIBRARIES}
+    target_link_libraries (sawAtracsysFusionTrackQtExample
+                           ${sawAtracsysFusionTrack_LIBRARIES}
                            ${QT_LIBRARIES}
                            )
 
     # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawNDITrackerQtExample ${REQUIRED_CISST_LIBRARIES})
+    cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})
 
-    add_custom_command (TARGET sawNDITrackerQtExample
-                        POST_BUILD
-                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
-                                ${CMAKE_CURRENT_SOURCE_DIR}/configNDITracker.xml
-                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/configNDITracker.xml
-                        COMMAND ${CMAKE_COMMAND} ARGS -E copy
-                                ${CMAKE_CURRENT_SOURCE_DIR}/mainPython.py
-                                ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/mainPython.py
-                        COMMENT "sawNDITrackerQtExample: copying files to the executable directory")
-
-  endif (sawNDITracker_FOUND)
+  endif (sawAtracsysFusionTrack_FOUND)
 
 endif (cisst_FOUND)

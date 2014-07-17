@@ -2,11 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
+  Author(s):  Anton Deguet
+  Created on: 2014-07-17
 
-  Author(s):  Anton Deguet, Ali Uneri
-  Created on: 2009-10-13
-
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -18,7 +17,7 @@ http://www.cisst.org/cisst/license.txt.
 */
 
 // check if this module is build as a DLL
-#ifdef sawNDITracker_EXPORTS
+#ifdef sawAtracsysFusionTrack_EXPORTS
 #define CISST_THIS_LIBRARY_AS_DLL
 #endif
 

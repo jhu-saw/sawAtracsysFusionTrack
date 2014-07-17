@@ -1,7 +1,5 @@
 #
-# $Id: CMakeLists.txt 3485 2012-02-26 06:08:41Z jbohren1 $
-#
-# (C) Copyright 2011-2012 Johns Hopkins University (JHU), All Rights
+# (C) Copyright 2014 Johns Hopkins University (JHU), All Rights
 # Reserved.
 #
 # --- begin cisst license - do not edit ---
@@ -12,6 +10,6 @@
 #
 # --- end cisst license ---
 
-project( sawTrajectories )
-add_subdirectory( code )
-add_subdirectory( examples )
+project (sawAtracsysFusionTrack)
+add_subdirectory (code)
+add_subdirectory (examples)
