@@ -18,6 +18,8 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <ftkInterface.h>
 
+#include <geometryHelper.hpp> // I would like to get rid of this and use only ftk functions + remove atracsys_DIR/bin from include directories
+
 #include <cisstMultiTask/mtsInterfaceProvided.h>
 
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
@@ -28,12 +30,22 @@ CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous,
 class mtsAtracsysFusionTrackInternals
 {
 public:
-    mtsAtracsysFusionTrackInternals(void) :
+    mtsAtracsysFusionTrackInternals(const size_t numberOfMarkers = 32):
+        NumberOfMarkers(numberOfMarkers),
         Library(0),
         Device(0)
-    {};
+    {
+        memset(&Frame, 0, sizeof(ftkFrameQuery));
+        Markers = new ftkMarker[NumberOfMarkers];
+        Frame.markers = Markers;
+        Frame.markersVersionSize.ReservedSize = sizeof(ftkMarker) * NumberOfMarkers;
+    };
+
+    size_t NumberOfMarkers;
     ftkLibrary Library;
     uint64 Device;
+    ftkFrameQuery Frame;
+    ftkMarker * Markers;
 };
 
 
@@ -65,7 +77,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
-   
     // Scan for devices
     ftkError error = ftkEnumerateDevices(Internals->Library,
                                          mtsAtracsysFusionTrackDeviceEnum,
@@ -79,19 +90,76 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         ftkClose(Internals->Library);
         return;
     }
+
+    // to be moved to AddTool
+    ftkGeometry geom;
+
+    switch (loadGeometry(Internals->Library, Internals->Device, "geometry003.ini", geom))
+    {
+    case 1:
+        std::cerr << "Loaded from installation directory." << std::endl;
+    case 0:
+        error = ftkSetGeometry(Internals->Library, Internals->Device, &geom);
+        if (error != FTK_OK) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to set geometry (" << this->GetName() << ")" << std::endl;
+        }
+        break;
+    default:
+        CMN_LOG_CLASS_INIT_ERROR << "Error, cannot load geometry file." << std::endl;
+    }
+
     std::cerr << "configure" << std::endl;
 }
 
 
 void mtsAtracsysFusionTrack::Run(void)
 {
-    // std::cerr << "running" << std::endl;
     ProcessQueuedCommands();
+    if (ftkGetLastFrame(Internals->Library,
+                        Internals->Device,
+                        &(Internals->Frame),
+                        100 /* block up to 100 ms if next frame is not available*/) != FTK_OK) {
+        CMN_LOG_CLASS_RUN_DEBUG << "Run: timeout on ftkGetLastFrame" << std::endl;
+        return;
+    }
+
+    switch (Internals->Frame.markersStat) {
+    case QS_WAR_SKIPPED:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
+    case QS_ERR_INVALID_RESERVED_SIZE:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
+    default:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+    case QS_OK:
+        break;
+    }
+
+    size_t count = Internals->Frame.markersCount;
+
+    if (count > Internals->NumberOfMarkers) {
+        CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
+                                  << Internals->NumberOfMarkers << " marker(s) will processed." << std::endl;
+        count = Internals->NumberOfMarkers;
+    }
+
+    for (size_t m = 0; m < count; m++)
+    {
+        printf("geometry %u, trans (%.2f %.2f %.2f), error %.3f\n",
+            Internals->Markers[m].geometryId,
+            Internals->Markers[m].translationMM[0],
+            Internals->Markers[m].translationMM[1],
+            Internals->Markers[m].translationMM[2],
+            Internals->Markers[m].registrationErrorMM);
+
+        // Check for other marker fields to get rotation, fiducial id, etc.
+    }
+
 }
 
 
 void mtsAtracsysFusionTrack::Cleanup(void)
 {
+    ftkClose(Internals->Library);
 }
 
 
