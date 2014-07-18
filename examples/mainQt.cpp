@@ -59,6 +59,7 @@ int main(int argc, char * argv[])
 	}
 #endif
     tracker->Configure("empty");
+    tracker->AddToolIni("MS3-04-004", "geometry003.ini");
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();

@@ -26,22 +26,11 @@ http://www.cisst.org/cisst/license.txt.
 
 // forward declarations for internal data
 class mtsAtracsysFusionTrackInternals;
+class mtsAtracsysFusionTrackTool;
 
 class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 {
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
-
- protected:
-    class Tool
-    {
-     public:
-        Tool(void);
-        ~Tool(void) {};
-
-        std::string Name;
-        mtsInterfaceProvided * Interface;
-        prmPositionCartesianGet MarkerPosition;
-    };
 
  public:
     mtsAtracsysFusionTrack(const std::string & componentName):
@@ -62,6 +51,8 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     void Cleanup(void);
 
+    bool AddToolIni(const std::string & toolName, const std::string & fileName);
+
     size_t GetNumberOfTools(void) const {
         return Tools.size();
     }
@@ -70,9 +61,8 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
 protected:
     mtsAtracsysFusionTrackInternals * Internals;
-    typedef cmnNamedMap<Tool> ToolsType;
+    typedef cmnNamedMap<mtsAtracsysFusionTrackTool> ToolsType;
     ToolsType Tools;
-    cmnNamedMap<Tool> PortToTool;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrack);

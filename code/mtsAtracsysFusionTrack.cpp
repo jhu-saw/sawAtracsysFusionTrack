@@ -27,6 +27,23 @@ http://www.cisst.org/cisst/license.txt.
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
 
+class mtsAtracsysFusionTrackTool
+{
+public:
+    mtsAtracsysFusionTrackTool(const std::string & name) :
+        Name(name),
+        Interface(0),
+        StateTable(500, name)
+    {}
+
+    ~mtsAtracsysFusionTrackTool(void) {}
+
+    std::string Name;
+    mtsInterfaceProvided * Interface;
+    prmPositionCartesianGet Position;
+    mtsStateTable StateTable;
+};
+
 class mtsAtracsysFusionTrackInternals
 {
 public:
@@ -49,11 +66,11 @@ public:
 };
 
 
-void mtsAtracsysFusionTrackDeviceEnum(uint64 sn, void * user, ftkDeviceType type)
+void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType type)
 {
-    uint64 * lastDevice =reinterpret_cast<uint64 *>(user);
+    uint64 * lastDevice = reinterpret_cast<uint64 *>(user);
     if (lastDevice) {
-        *lastDevice = sn;
+        *lastDevice = device;
     }
 }
 
@@ -90,24 +107,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         ftkClose(Internals->Library);
         return;
     }
-
-    // to be moved to AddTool
-    ftkGeometry geom;
-
-    switch (loadGeometry(Internals->Library, Internals->Device, "geometry003.ini", geom))
-    {
-    case 1:
-        std::cerr << "Loaded from installation directory." << std::endl;
-    case 0:
-        error = ftkSetGeometry(Internals->Library, Internals->Device, &geom);
-        if (error != FTK_OK) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to set geometry (" << this->GetName() << ")" << std::endl;
-        }
-        break;
-    default:
-        CMN_LOG_CLASS_INIT_ERROR << "Error, cannot load geometry file." << std::endl;
-    }
-
     std::cerr << "configure" << std::endl;
 }
 
@@ -162,6 +161,51 @@ void mtsAtracsysFusionTrack::Cleanup(void)
     ftkClose(Internals->Library);
 }
 
+
+bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std::string & fileName)
+{
+    // check if this tool already exists
+    mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);
+    if (tool) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
+        return false;
+    }
+
+    // make sure we can find and load this tool ini file
+    ftkError error;
+    ftkGeometry geometry;
+    switch (loadGeometry(Internals->Library, Internals->Device, fileName, geometry))
+    {
+    case 1:
+        CMN_LOG_CLASS_INIT_VERBOSE << "AddToolIni: loaded " << fileName << " from installation directory" << std::endl;
+    case 0:
+        error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
+        if (error != FTK_OK) {
+            CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: unable to set geometry for tool " << fileName << " (" << this->GetName() << ")" << std::endl;
+            return false;
+        }
+        break;
+    default:
+        CMN_LOG_CLASS_INIT_ERROR << "AddToolInit: error, cannot load geometry file " << fileName << std::endl;
+        return false;
+    }
+
+    tool = new mtsAtracsysFusionTrackTool(toolName);
+
+    // create an interface for tool
+    tool->Interface = AddInterfaceProvided(toolName);
+    if (!tool->Interface) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
+        delete tool;
+        return false;
+    }
+
+    this->AddStateTable(&(tool->StateTable));
+    tool->StateTable.AddData(tool->Position, "Position");
+    tool->Interface->AddCommandReadState(tool->StateTable, tool->Position, "GetPositionCartesian");
+
+    return true;
+}
 
 #if 0
 mtsAtracsysFusionTrack::Tool * mtsAtracsysFusionTrack::AddTool(const std::string & name, const char * serialNumber)
