@@ -175,6 +175,7 @@ void mtsAtracsysFusionTrack::Run(void)
                     tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
                 }
             }
+            tool->Position.Position().Rotation().NormalizedSelf();
             tool->RegistrationError = currentMarker->registrationErrorMM;
             tool->StateTable.Advance();
         }
