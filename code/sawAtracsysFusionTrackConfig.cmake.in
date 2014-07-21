@@ -11,3 +11,4 @@
 set (sawAtracsysFusionTrack_INCLUDE_DIR "@sawAtracsysFusionTrack_INCLUDE_DIR@")
 set (sawAtracsysFusionTrack_LIBRARY_DIR "@sawAtracsysFusionTrack_LIBRARY_DIR@")
 set (sawAtracsysFusionTrack_LIBRARIES   "@sawAtracsysFusionTrack_LIBRARIES@")
+set (sawAtracsysFusionTrackQt_LIBRARIES "@sawAtracsysFusionTrackQt_LIBRARIES@")

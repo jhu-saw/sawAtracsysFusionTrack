@@ -41,6 +41,7 @@ public:
     std::string Name;
     mtsInterfaceProvided * Interface;
     prmPositionCartesianGet Position;
+    double RegistrationError;
     mtsStateTable StateTable;
 };
 
@@ -63,6 +64,9 @@ public:
     uint64 Device;
     ftkFrameQuery Frame;
     ftkMarker * Markers;
+
+    typedef std::map<uint32, mtsAtracsysFusionTrackTool *> GeometryIdToToolMap;
+    GeometryIdToToolMap GeometryIdToTool;
 };
 
 
@@ -88,13 +92,14 @@ void mtsAtracsysFusionTrack::Construct(void)
 
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
+    // initialize fusion track library
     Internals->Library = ftkInit();
     if (!Internals->Library) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to initialize (" << this->GetName() << ")" << std::endl;
         return;
     }
 
-    // Scan for devices
+    // search for devices
     ftkError error = ftkEnumerateDevices(Internals->Library,
                                          mtsAtracsysFusionTrackDeviceEnum,
                                          &(Internals->Device));
@@ -111,9 +116,19 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 }
 
 
+void mtsAtracsysFusionTrack::Startup(void)
+{
+    std::cerr << "Startup" << std::endl;
+}
+
+
+
 void mtsAtracsysFusionTrack::Run(void)
 {
+    // process mts commands
     ProcessQueuedCommands();
+
+    // get latest frame from fusion track library/device
     if (ftkGetLastFrame(Internals->Library,
                         Internals->Device,
                         &(Internals->Frame),
@@ -122,6 +137,7 @@ void mtsAtracsysFusionTrack::Run(void)
         return;
     }
 
+    // check results of last frame
     switch (Internals->Frame.markersStat) {
     case QS_WAR_SKIPPED:
         CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
@@ -133,26 +149,36 @@ void mtsAtracsysFusionTrack::Run(void)
         break;
     }
 
+    // make sure we're not getting more markers than allocated
     size_t count = Internals->Frame.markersCount;
-
     if (count > Internals->NumberOfMarkers) {
         CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
                                   << Internals->NumberOfMarkers << " marker(s) will processed." << std::endl;
         count = Internals->NumberOfMarkers;
     }
 
-    for (size_t m = 0; m < count; m++)
-    {
-        printf("geometry %u, trans (%.2f %.2f %.2f), error %.3f\n",
-            Internals->Markers[m].geometryId,
-            Internals->Markers[m].translationMM[0],
-            Internals->Markers[m].translationMM[1],
-            Internals->Markers[m].translationMM[2],
-            Internals->Markers[m].registrationErrorMM);
-
-        // Check for other marker fields to get rotation, fiducial id, etc.
+    // for each marker, get the data and populate corresponding tool
+    for (size_t index = 0; index < count; ++index) {
+        ftkMarker * currentMarker = &(Internals->Markers[index]);
+        // find the appropriate tool
+        if (Internals->GeometryIdToTool.find(currentMarker->geometryId) == Internals->GeometryIdToTool.end()) {
+            CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id not registered using AddTool, this marker will be ignored ("
+                                      << this->GetName() << ")" << std::endl;
+        } else {
+            mtsAtracsysFusionTrackTool * tool = Internals->GeometryIdToTool.at(currentMarker->geometryId);
+            tool->StateTable.Start();
+            tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
+                                                           currentMarker->translationMM[1],
+                                                           currentMarker->translationMM[1]);
+            for (size_t row = 0; row < 3; ++row) {
+                for (size_t col = 0; col < 3; ++col) {
+                    tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
+                }
+            }
+            tool->RegistrationError = currentMarker->registrationErrorMM;
+            tool->StateTable.Advance();
+        }
     }
-
 }
 
 
@@ -186,10 +212,19 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
         }
         break;
     default:
-        CMN_LOG_CLASS_INIT_ERROR << "AddToolInit: error, cannot load geometry file " << fileName << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: error, cannot load geometry file " << fileName << std::endl;
         return false;
     }
 
+    // make sure there is no such geometry Id yet
+    const mtsAtracsysFusionTrackInternals::GeometryIdToToolMap::const_iterator
+        toolIterator = Internals->GeometryIdToTool.find(geometry.geometryId);
+    if (toolIterator != Internals->GeometryIdToTool.end()) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: error, found an existing tool with the same Id " << geometry.geometryId << " for " << fileName << std::endl;
+        return false;
+    }
+
+    // finally create a cisst tool structure
     tool = new mtsAtracsysFusionTrackTool(toolName);
 
     // create an interface for tool
@@ -200,45 +235,23 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
         return false;
     }
 
+    // regiter newly created tool
+    this->Tools.AddItem(toolName, tool);
+    Internals->GeometryIdToTool[geometry.geometryId] = tool;
+
+    // add data for this tool and populate tool interface
     this->AddStateTable(&(tool->StateTable));
     tool->StateTable.AddData(tool->Position, "Position");
+    tool->StateTable.AddData(tool->RegistrationError, "RegistrationError");
     tool->Interface->AddCommandReadState(tool->StateTable, tool->Position, "GetPositionCartesian");
+    tool->Interface->AddCommandReadState(tool->StateTable, tool->RegistrationError, "GetRegistrationError");
+    tool->Interface->AddCommandReadState(tool->StateTable,
+                                         tool->StateTable.PeriodStats,
+                                         "GetPeriodStatistics");
 
     return true;
 }
 
-#if 0
-mtsAtracsysFusionTrack::Tool * mtsAtracsysFusionTrack::AddTool(const std::string & name, const char * serialNumber)
-{
-    Tool * tool = CheckTool(serialNumber);
-
-    if (tool) {
-        CMN_LOG_CLASS_INIT_WARNING << "AddTool: " << tool->Name << " already exists, renaming it to " << name << " instead" << std::endl;
-        tool->Name = name;
-    } else {
-        tool = new Tool();
-        tool->Name = name;
-        strncpy(tool->SerialNumber, serialNumber, 8);
-
-        if (!Tools.AddItem(tool->Name, tool, CMN_LOG_LEVEL_INIT_ERROR)) {
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: no tool created, duplicate name exists: " << name << std::endl;
-            delete tool;
-            return 0;
-        }
-        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: created tool \"" << name << "\" with serial number: " << serialNumber << std::endl;
-
-        // create an interface for tool
-        tool->Interface = AddInterfaceProvided(name);
-        if (tool->Interface) {
-            StateTable.AddData(tool->TooltipPosition, name + "Position");
-            tool->Interface->AddCommandReadState(StateTable, tool->TooltipPosition, "GetPositionCartesian");
-            StateTable.AddData(tool->MarkerPosition, name + "Marker");
-            tool->Interface->AddCommandReadState(StateTable, tool->MarkerPosition, "GetMarkerCartesian");
-        }
-    }
-    return tool;
-}
-#endif
 
 std::string mtsAtracsysFusionTrack::GetToolName(const size_t index) const
 {

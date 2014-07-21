@@ -2,11 +2,10 @@
 /* ex: set filetype=cpp softtabstop=4 shiftwidth=4 tabstop=4 cindent expandtab: */
 
 /*
+  Author(s):  Anton Deguet
+  Created on: 2014-07-21
 
-  Author(s):  Ali Uneri
-  Created on: 2009-10-13
-
-  (C) Copyright 2009-2012 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -28,6 +27,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsCollectorState.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
+#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -42,22 +42,8 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
-    // create a Qt user interface
-    QApplication application(argc, argv);
-
     // create the components
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
-
-#if 0
-    // configure the components
-    cmnPath searchPath;
-    searchPath.Add(cmnPath::GetWorkingDirectory());
-    std::string configPath = searchPath.Find("configNDITracker.xml");
-	if (configPath.empty()) {
-		std::cerr << "Failed to find configuration: " << configPath << std::endl;
-		return 1;
-	}
-#endif
     tracker->Configure("empty");
     tracker->AddToolIni("MS3-04-004", "geometry003.ini");
 
@@ -65,34 +51,20 @@ int main(int argc, char * argv[])
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
 
-#if 0
-    // connect the components, e.g. RequiredInterface -> ProvidedInterface
-    componentManager->Connect(componentControllerQtComponent->GetName(), "Controller",
-                              componentNDISerial->GetName(), "Controller");
+    // create a Qt user interface
+    QApplication application(argc, argv);
 
-    // add data collection for mtsNDISerial state table
-    mtsCollectorState * componentCollector =
-        new mtsCollectorState(componentNDISerial->GetName(),
-                              componentNDISerial->GetDefaultStateTableName(),
-                              mtsCollectorBase::COLLECTOR_FILE_FORMAT_CSV);
+    // organize all widgets in a tab widget
+    QTabWidget * tabWidget = new QTabWidget;
 
-    // add interfaces for tools and populate controller widget with tool widgets
-    for (unsigned int i = 0; i < componentNDISerial->GetNumberOfTools(); i++) {
-        std::string toolName = componentNDISerial->GetToolName(i);
-        mtsNDISerialToolQtComponent * componentToolQtComponent = new mtsNDISerialToolQtComponent(toolName);
-        componentControllerQtComponent->AddTool(componentToolQtComponent,
-                                                componentToolQtComponent->GetWidget());
-        componentManager->AddComponent(componentToolQtComponent);
-        componentManager->Connect(toolName, toolName,
-                                  componentNDISerial->GetName(), toolName);
-
-        componentCollector->AddSignal(toolName + "Position");
-    }
-    componentManager->AddComponent(componentCollector);
-    componentCollector->Connect();
-    componentManager->Connect(componentControllerQtComponent->GetName(), "DataCollector",
-                              componentCollector->GetName(), "Control");
-#endif
+    mtsAtracsysFusionTrackToolQtWidget *
+        toolWidget = new mtsAtracsysFusionTrackToolQtWidget("MS3-04-004-GUI");
+    toolWidget->Configure();
+    componentManager->AddComponent(toolWidget);
+    componentManager->Connect(toolWidget->GetName(), "Tool",
+                              tracker->GetName(), "MS3-04-004");
+    tabWidget->addTab(toolWidget, "MS3-04-004");
+    tabWidget->show();
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);

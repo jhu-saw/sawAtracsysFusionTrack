@@ -30,7 +30,7 @@ if (cisst_FOUND)
   # sawNDITracker has been compiled within cisst, we should find it automatically
   cisst_find_saw_component (sawAtracsysFusionTrack REQUIRED)
 
-  if (sawAtracsysFusionTrack_FOUND)
+  if (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
     # sawAtracsysFusionTrack configuration
     include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
@@ -42,12 +42,13 @@ if (cisst_FOUND)
     # link against non cisst libraries and saw components
     target_link_libraries (sawAtracsysFusionTrackQtExample
                            ${sawAtracsysFusionTrack_LIBRARIES}
+                           ${sawAtracsysFusionTrackQt_LIBRARIES}
                            ${QT_LIBRARIES}
                            )
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})
 
-  endif (sawAtracsysFusionTrack_FOUND)
+  endif (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
 endif (cisst_FOUND)

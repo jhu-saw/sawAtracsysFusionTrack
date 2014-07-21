@@ -50,6 +50,10 @@ if (cisst_FOUND_AS_REQUIRED)
   cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
   target_link_libraries (sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
+  # add Qt code
+  add_subdirectory (Qt)
+  set (sawIntuitiveResearchKit_LIBRARIES ${sawIntuitiveResearchKit_LIBRARIES} ${sawIntuitiveResearchKitQt_LIBRARIES})
+
   configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/sawAtracsysFusionTrackConfig.cmake.in"
                   "${sawAtracsysFusionTrack_BINARY_DIR}/sawAtracsysFusionTrackConfig.cmake"
                    @ONLY@)

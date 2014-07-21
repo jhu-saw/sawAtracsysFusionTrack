@@ -28,16 +28,32 @@ http://www.cisst.org/cisst/license.txt.
 class mtsAtracsysFusionTrackInternals;
 class mtsAtracsysFusionTrackTool;
 
+/*!
+  \todo Create InitLibrary method and call it in Configure or AddTool is not already done
+  \todo Add flag to check if ftkInit has been called and then check in AddTool and Startup, report error if not
+  \todo Add error in Tool class
+  \todo Add mtsIntervalStatistics per tool
+  \todo Make sure IsValid is used
+  \todo Add method AddTool to add tool from geometry as std::vector<vct3> + geometry Id
+  \todo Use method AddTool in AddToolIni
+  \todo AddTool(JSON value)
+  \todo Configure(JSON value)
+  \todo Can this thing beep on command?
+*/
 class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 {
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
 
  public:
-    mtsAtracsysFusionTrack(const std::string & componentName):
-        mtsTaskContinuous(componentName, 100) { Construct(); }
+    inline mtsAtracsysFusionTrack(const std::string & componentName):
+        mtsTaskContinuous(componentName, 100) {
+        Construct();
+    }
 
-    mtsAtracsysFusionTrack(const mtsTaskContinuousConstructorArg & arg):
-        mtsTaskContinuous(arg) { Construct(); }
+    inline mtsAtracsysFusionTrack(const mtsTaskContinuousConstructorArg & arg):
+        mtsTaskContinuous(arg) {
+        Construct();
+    }
 
     ~mtsAtracsysFusionTrack(void) {};
 
@@ -45,7 +61,7 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     void Configure(const std::string & filename = "");
 
-    void Startup(void) {};
+    void Startup(void);
 
     void Run(void);
 
@@ -53,7 +69,7 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     bool AddToolIni(const std::string & toolName, const std::string & fileName);
 
-    size_t GetNumberOfTools(void) const {
+    inline size_t GetNumberOfTools(void) const {
         return Tools.size();
     }
 
