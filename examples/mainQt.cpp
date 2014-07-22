@@ -64,13 +64,13 @@ int main(int argc, char * argv[])
     componentManager->Connect(toolWidget->GetName(), "Tool",
                               tracker->GetName(), "MS3-04-004");
     tabWidget->addTab(toolWidget, "MS3-04-004");
-    tabWidget->show();
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);
 
     // run Qt user interface
+    tabWidget->show();
     application.exec();
 
     // kill all components and perform cleanup

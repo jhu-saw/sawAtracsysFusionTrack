@@ -21,18 +21,12 @@ http://www.cisst.org/cisst/license.txt.
 #define _mtsAtracsysFusionTrackToolQtWidget_h
 
 #include <cisstMultiTask/mtsComponent.h>
-
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
-
 #include <cisstVector/vctQtWidgetFrame.h>
-#include <cisstVector/vctQtWidgetDynamicVector.h>
 #include <cisstMultiTask/mtsQtWidgetIntervalStatistics.h>
 
-
-
-#include <QtCore>
-#include <QtGui>
-
+#include <QWidget>
+#include <QLabel>
 
 class mtsAtracsysFusionTrackToolQtWidget: public QWidget, public mtsComponent
 {
@@ -70,8 +64,8 @@ private:
     double RegistrationError;
 
     vctQtWidgetFrameDoubleRead * QFRPositionCartesianWidget;
-    vctQtWidgetDynamicVectorDoubleRead * QVPositionJointWidget;
-    vctQtWidgetDynamicVectorDoubleRead * QVVelocityJointWidget;
+    QLabel * QLValid;
+    QLabel * QLRegistrationError;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;

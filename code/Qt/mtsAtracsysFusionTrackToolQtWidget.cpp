@@ -40,6 +40,7 @@ mtsAtracsysFusionTrackToolQtWidget::mtsAtracsysFusionTrackToolQtWidget(const std
         interfaceRequired->AddFunction("GetRegistrationError", Arm.GetRegistrationError);
         interfaceRequired->AddFunction("GetPeriodStatistics", Arm.GetPeriodStatistics);
     }
+    setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
 }
 
@@ -88,12 +89,18 @@ void mtsAtracsysFusionTrackToolQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(eve
         CMN_LOG_CLASS_RUN_ERROR << "Manipulator.GetPositionCartesian failed, \""
                                 << executionResult << "\"" << std::endl;
     }
-    QFRPositionCartesianWidget->SetValue(PositionCartesian.Position());
+    else {
+        QFRPositionCartesianWidget->SetValue(PositionCartesian.Position());
+        QLValid->setNum(PositionCartesian.Valid());
+    }
 
     executionResult = Arm.GetRegistrationError(RegistrationError);
     if (!executionResult) {
         CMN_LOG_CLASS_RUN_ERROR << "Manipulator.GetRegistrationError failed, \""
                                 << executionResult << "\"" << std::endl;
+    }
+    else {
+        QLRegistrationError->setNum(RegistrationError);
     }
     Arm.GetPeriodStatistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
@@ -124,13 +131,13 @@ void mtsAtracsysFusionTrackToolQtWidget::setupUi(void)
 
     gridLayout->setSpacing(1);
     int row = 0;
-    gridLayout->addWidget(new QLabel("Joint positions"), row, 0);
-    QVPositionJointWidget = new vctQtWidgetDynamicVectorDoubleRead();
-    gridLayout->addWidget(QVPositionJointWidget, row, 1);
+    gridLayout->addWidget(new QLabel("Valid"), row, 0);
+    QLValid = new QLabel();
+    gridLayout->addWidget(QLValid, row, 1);
     row++;
-    // gridLayout->addWidget(new QLabel("Joint velocities"), row, 0);
-    // QVVelocityJointWidget = new vctQtWidgetDynamicVectorDoubleRead();
-    // gridLayout->addWidget(QVVelocityJointWidget, row, 1);
+    gridLayout->addWidget(new QLabel("Registration Error"), row, 0);
+    QLRegistrationError = new QLabel();
+    gridLayout->addWidget(QLRegistrationError, row, 1);
     row++;
 
     setLayout(mainLayout);

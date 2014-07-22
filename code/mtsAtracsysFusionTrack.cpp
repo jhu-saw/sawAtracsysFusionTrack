@@ -157,6 +157,14 @@ void mtsAtracsysFusionTrack::Run(void)
         count = Internals->NumberOfMarkers;
     }
 
+    // initialize all tools
+    const ToolsType::iterator end = Tools.end();
+    ToolsType::iterator iter;
+    for (iter = Tools.begin(); iter != end; ++iter) {
+        iter->second->StateTable.Start();
+        iter->second->Position.SetValid(false);
+    }
+
     // for each marker, get the data and populate corresponding tool
     for (size_t index = 0; index < count; ++index) {
         ftkMarker * currentMarker = &(Internals->Markers[index]);
@@ -166,7 +174,7 @@ void mtsAtracsysFusionTrack::Run(void)
                                       << this->GetName() << ")" << std::endl;
         } else {
             mtsAtracsysFusionTrackTool * tool = Internals->GeometryIdToTool.at(currentMarker->geometryId);
-            tool->StateTable.Start();
+            tool->Position.SetValid(true);
             tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
                                                            currentMarker->translationMM[1],
                                                            currentMarker->translationMM[1]);
@@ -175,11 +183,15 @@ void mtsAtracsysFusionTrack::Run(void)
                     tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
                 }
             }
-            tool->Position.Position().Rotation().NormalizedSelf();
             tool->RegistrationError = currentMarker->registrationErrorMM;
-            tool->StateTable.Advance();
         }
     }
+
+    // finalize all tools
+    for (iter = Tools.begin(); iter != end; ++iter) {
+        iter->second->StateTable.Advance();
+    }
+
 }
 
 
@@ -241,6 +253,7 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
     Internals->GeometryIdToTool[geometry.geometryId] = tool;
 
     // add data for this tool and populate tool interface
+    tool->StateTable.SetAutomaticAdvance(false);
     this->AddStateTable(&(tool->StateTable));
     tool->StateTable.AddData(tool->Position, "Position");
     tool->StateTable.AddData(tool->RegistrationError, "RegistrationError");

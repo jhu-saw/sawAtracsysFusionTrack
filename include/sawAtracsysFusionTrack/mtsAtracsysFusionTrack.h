@@ -31,9 +31,6 @@ class mtsAtracsysFusionTrackTool;
 /*!
   \todo Create InitLibrary method and call it in Configure or AddTool is not already done
   \todo Add flag to check if ftkInit has been called and then check in AddTool and Startup, report error if not
-  \todo Add error in Tool class
-  \todo Add mtsIntervalStatistics per tool
-  \todo Make sure IsValid is used
   \todo Add method AddTool to add tool from geometry as std::vector<vct3> + geometry Id
   \todo Use method AddTool in AddToolIni
   \todo AddTool(JSON value)
