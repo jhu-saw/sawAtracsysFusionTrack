@@ -28,7 +28,10 @@ http://www.cisst.org/cisst/license.txt.
 #include <QWidget>
 #include <QLabel>
 
-class mtsAtracsysFusionTrackToolQtWidget: public QWidget, public mtsComponent
+// Always include last
+#include <sawAtracsysFusionTrack/sawAtracsysFusionTrackQtExport.h>
+
+class CISST_EXPORT mtsAtracsysFusionTrackToolQtWidget : public QWidget, public mtsComponent
 {
     Q_OBJECT;
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);

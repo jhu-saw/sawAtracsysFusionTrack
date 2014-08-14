@@ -15,6 +15,7 @@ set (REQUIRED_CISST_LIBRARIES
      cisstVectorQt
      cisstOSAbstraction
      cisstMultiTask
+	 cisstMultiTaskQt
      cisstParameterTypes
      cisstParameterTypesQt
      cisstQt)
@@ -38,6 +39,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
   add_library (sawAtracsysFusionTrackQt
                ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolQtWidget.h
+			   ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackQtExport.h
                mtsAtracsysFusionTrackToolQtWidget.cpp
                ${SAW_INTUITIVE_RESEARCH_KIT_QT_WRAP_CPP})
   set_property (TARGET sawAtracsysFusionTrackQt PROPERTY FOLDER "sawAtracsysFusionTrack")
