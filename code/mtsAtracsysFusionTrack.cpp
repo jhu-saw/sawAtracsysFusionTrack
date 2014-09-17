@@ -177,7 +177,7 @@ void mtsAtracsysFusionTrack::Run(void)
             tool->Position.SetValid(true);
             tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
                                                            currentMarker->translationMM[1],
-                                                           currentMarker->translationMM[1]);
+                                                           currentMarker->translationMM[2]);
             for (size_t row = 0; row < 3; ++row) {
                 for (size_t col = 0; col < 3; ++col) {
                     tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
