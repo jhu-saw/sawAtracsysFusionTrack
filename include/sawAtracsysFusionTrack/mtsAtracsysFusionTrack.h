@@ -72,10 +72,6 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     std::string GetToolName(const size_t index) const;
 
-	void ConfigureFor3DFiducialPoints();
-
-	void Get3DFiducialPoints();
-
 protected:
     mtsAtracsysFusionTrackInternals * Internals;
     typedef cmnNamedMap<mtsAtracsysFusionTrackTool> ToolsType;
