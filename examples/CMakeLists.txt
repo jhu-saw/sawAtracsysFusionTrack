@@ -27,7 +27,7 @@ if (cisst_FOUND)
   # load cisst configuration
   include (${CISST_USE_FILE})
 
-  # sawNDITracker has been compiled within cisst, we should find it automatically
+  # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
   cisst_find_saw_component (sawAtracsysFusionTrack REQUIRED)
 
   if (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
@@ -35,6 +35,10 @@ if (cisst_FOUND)
     # sawAtracsysFusionTrack configuration
     include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
     link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
+
+    if(COMMAND cmake_policy)
+      cmake_policy(SET CMP0003 NEW)
+    endif(COMMAND cmake_policy)
 
     add_executable (sawAtracsysFusionTrackQtExample mainQt.cpp)
     set_property (TARGET sawAtracsysFusionTrackQtExample PROPERTY FOLDER "sawAtracsysFusionTrack")
@@ -48,6 +52,20 @@ if (cisst_FOUND)
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})
+
+    add_executable (sawAtracsysFusionTrackExample main.cpp
+						     sawAtracsysFusionTrackDataLinker.h
+						     sawAtracsysFusionTrackDataLinker.cpp)
+    set_property (TARGET sawAtracsysFusionTrackExample PROPERTY FOLDER "sawAtracsysFusionTrack/examples")
+
+    # link against non cisst libraries and saw components
+    target_link_libraries (sawAtracsysFusionTrackExample
+			    ${sawAtracsysFusionTrack_LIBRARIES}
+			    ${QT_LIBRARIES}
+                           )
+
+    # link against cisst libraries (and dependencies)
+    cisst_target_link_libraries (sawAtracsysFusionTrackExample ${REQUIRED_CISST_LIBRARIES})
 
   endif (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
