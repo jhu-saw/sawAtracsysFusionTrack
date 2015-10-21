@@ -197,11 +197,13 @@ void mtsAtracsysFusionTrack::Run(void)
 
 			tool->RegistrationError = currentMarker->registrationErrorMM;
 			
+            /*
 			printf("Marker:\n");
 			printf("XYZ (%.2f %.2f %.2f)\n",
 					currentMarker->translationMM[0],
 					currentMarker->translationMM[1],
 					currentMarker->translationMM[2]);
+             */
 		}
 	}
 
@@ -228,9 +230,10 @@ void mtsAtracsysFusionTrack::Run(void)
 	ThreeDFiducialPosition.resize(NumberOfThreeDFiducials);
 
 
-	printf("3D fiducials:\n");
+	//printf("3D fiducials:\n");
 	for (uint32 m = 0; m < NumberOfThreeDFiducials; m++)
 	{
+        /*
 		printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
 			Internals->threedFiducials[m].leftIndex,
 			Internals->threedFiducials[m].rightIndex,
@@ -240,7 +243,7 @@ void mtsAtracsysFusionTrack::Run(void)
 			Internals->threedFiducials[m].epipolarErrorPixels,
 			Internals->threedFiducials[m].triangulationErrorMM,
 			Internals->threedFiducials[m].probability);
-
+        */
 		ThreeDFiducialPosition[m].X() = Internals->threedFiducials[m].positionMM.x;
 		ThreeDFiducialPosition[m].Y() = Internals->threedFiducials[m].positionMM.y;
 		ThreeDFiducialPosition[m].Z() = Internals->threedFiducials[m].positionMM.z;
