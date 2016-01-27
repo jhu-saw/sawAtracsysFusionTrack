@@ -19,8 +19,11 @@ http://www.cisst.org/cisst/license.txt.
 #ifndef _mtsAtracsysFusionTrack_h
 #define _mtsAtracsysFusionTrack_h
 
+#include <cisstCommon/cmnPath.h>
 #include <cisstMultiTask/mtsTaskContinuous.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+
+#include <json/json.h> // in order to read config file
 
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackExport.h>  // always include last
 

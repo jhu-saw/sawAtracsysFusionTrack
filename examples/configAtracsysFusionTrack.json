@@ -1,0 +1,19 @@
+{
+    "tools":
+    [
+        {
+            "name": "Reference",
+            "ini-file": "geometry_ref.ini"
+        }
+        ,
+        {
+            "name": "Arm Tool",
+            "ini-file": "geometry_arm_recalibrated.ini"
+        }
+    	,
+    	{
+            "name": "Tip Tool",
+            "ini-file": "geometry_tool.ini"
+    	}
+    ]
+}
