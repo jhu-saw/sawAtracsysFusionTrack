@@ -44,8 +44,11 @@ int main(int argc, char * argv[])
 
     // create the components
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
-    tracker->Configure("empty");
-    tracker->AddToolIni("Tool", "geometry0001.ini");
+    // tracker->Configure("/home/rems/dev/cisst-saw/sawAtracsysFusionTrack/examples/configAtracsysFusionTrack.json");
+    tracker->Configure("");
+    tracker->AddToolIni("Tip Tool", "geometry_tool.ini");
+    tracker->AddToolIni("Arm Tool", "geometry_arm_recalibrated.ini");
+    tracker->AddToolIni("Reference", "geometry_ref.ini");
 
 	// add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
@@ -57,8 +60,12 @@ int main(int argc, char * argv[])
 	componentManager->Connect(dataLinker->GetName(), "Controller",
 							  tracker->GetName(), "Controller");
 
-	componentManager->Connect(dataLinker->GetName(), "Tool",
-								tracker->GetName(), "Tool");
+	componentManager->Connect(dataLinker->GetName(), "Tip Tool",
+								tracker->GetName(), "Tip Tool");
+    componentManager->Connect(dataLinker->GetName(), "Arm Tool",
+                            tracker->GetName(), "Arm Tool");
+    componentManager->Connect(dataLinker->GetName(), "Reference",
+                        tracker->GetName(), "Reference");
 
     
     // create and start all components

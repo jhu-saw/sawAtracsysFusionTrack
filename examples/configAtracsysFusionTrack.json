@@ -8,12 +8,12 @@
         ,
         {
             "name": "Arm Tool",
-            "ini-file": "geometry_arm_recalibrated.ini"
+            "ini-file": "/home/rems/dev/rems/data/config/geometry_arm_recalibrated.ini"
         }
     	,
     	{
             "name": "Tip Tool",
-            "ini-file": "geometry_tool.ini"
+            "ini-file": "/home/rems/dev/rems/data/config/geometry_tool.ini"
     	}
     ]
 }
