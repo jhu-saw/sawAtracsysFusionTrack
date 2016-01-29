@@ -29,11 +29,11 @@ if (cisst_FOUND_AS_REQUIRED)
   endif ()
 
   # this should be replaced by a find AtracsysFusionTrack
-  if(WIN32)
+  if (WIN32)
     set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
     include_directories (${atracsys_DIR}/include
                         ${atracsys_DIR}/bin)
-  else (WIN32)
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set (atracsys_DIR "/home/paul/dev/fusiontrack")
     include_directories (${atracsys_DIR}/soft.atr.2cams.sdk/dev/include
                        ${atracsys_DIR}/soft.atr.2cams.sdk/dev/include/interface
@@ -43,7 +43,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
   if (WIN32)
     set (atracsys_LIBRARIES winmm "${atracsys_DIR}/lib/fusionTrack64.lib")
-  else (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set (atracsys_LIBRARIES pthread rt "/usr/lib/libfusionTrack64.so") # Note that you need to build fusionTrack for this to exist
   else (WIN32)
     set (atracsys_LIBRARIES pthread rt "${atracsys_DIR}/lib/fusionTrack64.lib")
