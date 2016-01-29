@@ -58,6 +58,8 @@ protected:
 
 
 	ToolStruct Tool;
+	ToolStruct Arm;
+	ToolStruct Ref;
 
 	FiducialStruct ThreeDFiducials;
 

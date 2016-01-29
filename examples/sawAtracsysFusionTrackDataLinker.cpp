@@ -35,7 +35,9 @@ sawAtracsysFusionTrackDataLinker::sawAtracsysFusionTrackDataLinker(const std::st
     }
     
     // the following two tools are using names normally defined in configure file
-	AddToolInterface("Tool", Tool);
+	AddToolInterface("Tip Tool", Tool);
+	AddToolInterface("Arm Tool", Arm);
+	AddToolInterface("Reference", Ref);
 }
 
 void sawAtracsysFusionTrackDataLinker::AddToolInterface(const std::string & toolName,
@@ -62,7 +64,7 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 	Tool.GetPositionCartesian(prmTool);
 	
 	if (!prmTool.Valid()) {
-		CMN_LOG_CLASS_RUN_ERROR << "Tool.GetPositionCartesian failed, \""
+		CMN_LOG_CLASS_RUN_ERROR << "Tool.GetPositionCartesian failed"
 			<< std::endl;
 	}
 	else {
@@ -70,20 +72,42 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 		std::cout << "Tool from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
 	}
 
-	ThreeDFiducials.GetNumberOfThreeDFiducials(ThreeDFiducials.NumberOfThreeDFiducials);
-
-	if (ThreeDFiducials.NumberOfThreeDFiducials != 0)
-	{
-		ThreeDFiducials.ThreeDFiducialPosition.resize(ThreeDFiducials.NumberOfThreeDFiducials);
-
-		ThreeDFiducials.GetThreeDFiducialPosition(ThreeDFiducials.ThreeDFiducialPosition);
-
-		for (unsigned int i = 0; i < ThreeDFiducials.NumberOfThreeDFiducials; i++)
-		{
-			std::cout << "ThreeDFiducialPosition[" << i << "]: " << ThreeDFiducials.ThreeDFiducialPosition[i].X() << "\t"
-				<< ThreeDFiducials.ThreeDFiducialPosition[i].Y() << "\t" << ThreeDFiducials.ThreeDFiducialPosition[i].Z() << std::endl;
-		}
+	Arm.GetPositionCartesian(prmTool);
+	
+	if (!prmTool.Valid()) {
+		CMN_LOG_CLASS_RUN_ERROR << "Arm.GetPositionCartesian failed"
+			<< std::endl;
 	}
+	else {
+		std::cout << "Arm from Atracsys Fusion Tracker (Translation): " << prmTool.Position().Translation() << std::endl;
+		std::cout << "Arm from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
+	}
+
+	Ref.GetPositionCartesian(prmTool);
+	
+	if (!prmTool.Valid()) {
+		CMN_LOG_CLASS_RUN_ERROR << "Ref.GetPositionCartesian failed"
+			<< std::endl;
+	}
+	else {
+		std::cout << "Ref from Atracsys Fusion Tracker (Translation): " << prmTool.Position().Translation() << std::endl;
+		std::cout << "Ref from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
+	}
+
+	// ThreeDFiducials.GetNumberOfThreeDFiducials(ThreeDFiducials.NumberOfThreeDFiducials);
+
+	// if (ThreeDFiducials.NumberOfThreeDFiducials != 0)
+	// {
+	// 	ThreeDFiducials.ThreeDFiducialPosition.resize(ThreeDFiducials.NumberOfThreeDFiducials);
+
+	// 	ThreeDFiducials.GetThreeDFiducialPosition(ThreeDFiducials.ThreeDFiducialPosition);
+
+	// 	for (unsigned int i = 0; i < ThreeDFiducials.NumberOfThreeDFiducials; i++)
+	// 	{
+	// 		std::cout << "ThreeDFiducialPosition[" << i << "]: " << ThreeDFiducials.ThreeDFiducialPosition[i].X() << "\t"
+	// 			<< ThreeDFiducials.ThreeDFiducialPosition[i].Y() << "\t" << ThreeDFiducials.ThreeDFiducialPosition[i].Z() << std::endl;
+	// 	}
+	// }
 }
 void sawAtracsysFusionTrackDataLinker::Cleanup(void) {
 	

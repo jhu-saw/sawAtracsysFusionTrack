@@ -66,6 +66,7 @@ public:
     ftkFrameQuery Frame;
 	ftkMarker * Markers;
     ftk3DFiducial threedFiducials[100u];
+    bool Configured;
 
     typedef std::map<uint32, mtsAtracsysFusionTrackTool *> GeometryIdToToolMap;
     GeometryIdToToolMap GeometryIdToTool;
@@ -86,13 +87,13 @@ void mtsAtracsysFusionTrack::Construct(void)
     Internals = new mtsAtracsysFusionTrackInternals();
 
 	StateTable.AddData(NumberOfThreeDFiducials, "NumberOfThreeDFiducials");
-	StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
+	//StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
-//        provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
+       // provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
 		provided->AddCommandReadState(StateTable, NumberOfThreeDFiducials, "GetNumberOfThreeDFiducials");
-		provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
+		//provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
 
     }
 }
@@ -101,6 +102,8 @@ void mtsAtracsysFusionTrack::Construct(void)
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
 
+	CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
+
 	// initialize fusion track library
 	Internals->Library = ftkInit();
 	if (!Internals->Library) {
@@ -108,7 +111,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 		return;
 	}
 
-	// search for devices
+	// search for devices    
 	ftkError error = ftkEnumerateDevices(Internals->Library,
 		mtsAtracsysFusionTrackDeviceEnum,
 		&(Internals->Device));
@@ -116,19 +119,69 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 		CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
 		ftkClose(Internals->Library);
 	}
-	if (Internals->Device == 0) {
+	while (Internals->Device == 0) {
 		CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
-		ftkClose(Internals->Library);
-		return;
+		//ftkClose(Internals->Library);
+		//return;
+	ftkError error = ftkEnumerateDevices(Internals->Library,
+		mtsAtracsysFusionTrackDeviceEnum,
+		&(Internals->Device));
 	}
 
-	std::cerr << "configure" << std::endl;
+
+	// read JSON file passed as param, see configAtracsysFusionTrack.json for an example
+	std::ifstream jsonStream;
+    jsonStream.open(filename.c_str());
+
+    Json::Value jsonConfig, jsonValue;
+    Json::Reader jsonReader;
+    if (!jsonReader.parse(jsonStream, jsonConfig)) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to parse configuration\n"
+                                 << jsonReader.getFormattedErrorMessages();
+        Internals->Configured = false;
+        return;
+    }
+
+    // allows the use of relative paths for ini files
+    // cmnPath configPath(cmnPath::GetWorkingDirectory());
+    // std::string fullname = configPath.Find(filename);
+    // std::string configDir = fullname.substr(0, fullname.find_last_of('/'));
+    // configPath.Add(configDir);
+
+    const Json::Value jsonTools = jsonConfig["tools"];
+    for (unsigned int index = 0; index < jsonTools.size(); ++index) {
+        jsonValue = jsonTools[index];
+
+        std::string toolName = jsonValue["name"].asString();
+
+        // make sure toolName is valid
+        if (toolName == "") 
+        {
+        	CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << "\n";        	
+        }
+        else
+        {
+        	std::string iniFile = jsonValue["ini-file"].asString();
+
+        	// make sure ini file is valid
+        	if(cmnPath::Exists(iniFile))
+        	{            
+                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: called AddToolIni with toolName: " << toolName << " and ini file location: " << iniFile << std::endl;
+        		AddToolIni(toolName, iniFile);
+        	}
+        	else
+        	{
+        		CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile << " not found\n";        	
+        	}
+        }        
+    }
+
 }
 
 
 void mtsAtracsysFusionTrack::Startup(void)
 {
-    std::cerr << "Startup" << std::endl;
+    CMN_LOG_CLASS_RUN_ERROR << "Startup" << std::endl;
 }
 
 
@@ -261,7 +314,7 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
 {
 
     // check if this tool already exists
-    mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);
+    mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);    
     if (tool) {
         CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
         return false;
@@ -279,6 +332,10 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
         if (error != FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: unable to set geometry for tool " << fileName << " (" << this->GetName() << ")" << std::endl;
             return false;
+        }
+        else
+        {
+            CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: unable to set geometry for tool " << fileName << " (" << this->GetName() << ") but received FTK_OK" << std::endl;
         }
         break;
     default:
@@ -305,7 +362,7 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
         return false;
     }
 
-    // regiter newly created tool
+    // register newly created tool
     this->Tools.AddItem(toolName, tool);
     Internals->GeometryIdToTool[geometry.geometryId] = tool;
 
