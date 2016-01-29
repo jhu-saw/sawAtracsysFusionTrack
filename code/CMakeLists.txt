@@ -29,11 +29,25 @@ if (cisst_FOUND_AS_REQUIRED)
   endif ()
 
   # this should be replaced by a find AtracsysFusionTrack
-  set (atracsys_DIR "/home/rems/dev/robonetracker/thirdparty/fusiontrack")
-  include_directories (${atracsys_DIR}/soft.atr.2cams.sdk/dev/include
+  if(WIN32)
+    set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
+    include_directories (${atracsys_DIR}/include
+                        ${atracsys_DIR}/bin)
+  else (WIN32)
+    set (atracsys_DIR "/home/paul/dev/fusiontrack")
+    include_directories (${atracsys_DIR}/soft.atr.2cams.sdk/dev/include
                        ${atracsys_DIR}/soft.atr.2cams.sdk/dev/include/interface
-      ${atracsys_DIR}/soft.atr.2cams.samples/dev/include/public)
-  set (atracsys_LIBRARIES pthread rt "/usr/local/lib/robonetracker/libfusionTrack64.so")
+       ${atracsys_DIR}/soft.atr.2cams.samples/dev/include/public)
+    set (atracsys_LIBRARIES pthread rt "/usr/lib/libfusionTrack64.so")
+  endif (WIN32)   
+
+  if (WIN32)
+    set (atracsys_LIBRARIES winmm "${atracsys_DIR}/lib/fusionTrack64.lib")
+  else (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set (atracsys_LIBRARIES pthread rt "/usr/lib/libfusionTrack64.so") # Note that you need to build fusionTrack for this to exist
+  else (WIN32)
+    set (atracsys_LIBRARIES pthread rt "${atracsys_DIR}/lib/fusionTrack64.lib")
+  endif (WIN32)
 
   # create/configure file for find_package (sawAtracsysFusionTrack)
   set (sawAtracsysFusionTrack_INCLUDE_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include")

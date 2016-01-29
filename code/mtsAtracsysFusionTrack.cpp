@@ -87,13 +87,13 @@ void mtsAtracsysFusionTrack::Construct(void)
     Internals = new mtsAtracsysFusionTrackInternals();
 
 	StateTable.AddData(NumberOfThreeDFiducials, "NumberOfThreeDFiducials");
-	//StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
+	StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
        // provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
 		provided->AddCommandReadState(StateTable, NumberOfThreeDFiducials, "GetNumberOfThreeDFiducials");
-		//provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
+		provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
 
     }
 }
