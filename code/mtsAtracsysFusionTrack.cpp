@@ -119,14 +119,23 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 		CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
 		ftkClose(Internals->Library);
 	}
-	while (Internals->Device == 0) {
+	for(int i = 0; i < 10; i++) {
 		CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
 		//ftkClose(Internals->Library);
 		//return;
 	ftkError error = ftkEnumerateDevices(Internals->Library,
 		mtsAtracsysFusionTrackDeviceEnum,
 		&(Internals->Device));
+        if(Internals->Device != 0)
+        {
+            break;
+        }
 	}
+    if(Internals->Device == 0)
+    {
+        ftkClose(Internals->Library);
+        return;
+    }
 
 
 	// read JSON file passed as param, see configAtracsysFusionTrack.json for an example
