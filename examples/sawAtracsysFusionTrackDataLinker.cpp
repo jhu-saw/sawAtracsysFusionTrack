@@ -94,20 +94,20 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 		std::cout << "Ref from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
 	}
 
-	// ThreeDFiducials.GetNumberOfThreeDFiducials(ThreeDFiducials.NumberOfThreeDFiducials);
+	ThreeDFiducials.GetNumberOfThreeDFiducials(ThreeDFiducials.NumberOfThreeDFiducials);
 
-	// if (ThreeDFiducials.NumberOfThreeDFiducials != 0)
-	// {
-	// 	ThreeDFiducials.ThreeDFiducialPosition.resize(ThreeDFiducials.NumberOfThreeDFiducials);
+	if (ThreeDFiducials.NumberOfThreeDFiducials != 0)
+	{
+		ThreeDFiducials.ThreeDFiducialPosition.resize(ThreeDFiducials.NumberOfThreeDFiducials);
 
-	// 	ThreeDFiducials.GetThreeDFiducialPosition(ThreeDFiducials.ThreeDFiducialPosition);
+		ThreeDFiducials.GetThreeDFiducialPosition(ThreeDFiducials.ThreeDFiducialPosition);
 
-	// 	for (unsigned int i = 0; i < ThreeDFiducials.NumberOfThreeDFiducials; i++)
-	// 	{
-	// 		std::cout << "ThreeDFiducialPosition[" << i << "]: " << ThreeDFiducials.ThreeDFiducialPosition[i].X() << "\t"
-	// 			<< ThreeDFiducials.ThreeDFiducialPosition[i].Y() << "\t" << ThreeDFiducials.ThreeDFiducialPosition[i].Z() << std::endl;
-	// 	}
-	// }
+		for (unsigned int i = 0; i < ThreeDFiducials.NumberOfThreeDFiducials; i++)
+		{
+			std::cout << "ThreeDFiducialPosition[" << i << "]: " << ThreeDFiducials.ThreeDFiducialPosition[i].X() << "\t"
+				<< ThreeDFiducials.ThreeDFiducialPosition[i].Y() << "\t" << ThreeDFiducials.ThreeDFiducialPosition[i].Z() << std::endl;
+		}
+	}
 }
 void sawAtracsysFusionTrackDataLinker::Cleanup(void) {
 	
