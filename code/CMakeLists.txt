@@ -24,12 +24,27 @@ if (cisst_FOUND_AS_REQUIRED)
   # load cisst configuration
   include (${CISST_USE_FILE})
 
+  if (NOT CISST_HAS_JSON)
+    message( FATAL_ERROR "sawAtracsysFusionTrack requires cisst to be built with JSON" )
+  endif ()
+
   # this should be replaced by a find AtracsysFusionTrack
-  set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
-  include_directories (${atracsys_DIR}/include
-                       ${atracsys_DIR}/bin)
+  if (WIN32)
+    set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
+    include_directories (${atracsys_DIR}/include
+                        ${atracsys_DIR}/bin)
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set (atracsys_DIR "/home/paul/dev/fusiontrack")
+    include_directories (${atracsys_DIR}/soft.atr.2cams.sdk/dev/include
+                       ${atracsys_DIR}/soft.atr.2cams.sdk/dev/include/interface
+       ${atracsys_DIR}/soft.atr.2cams.samples/dev/include/public)
+    set (atracsys_LIBRARIES pthread rt "/usr/lib/libfusionTrack64.so")
+  endif (WIN32)   
+
   if (WIN32)
     set (atracsys_LIBRARIES winmm "${atracsys_DIR}/lib/fusionTrack64.lib")
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set (atracsys_LIBRARIES pthread rt "/usr/lib/libfusionTrack64.so") # Note that you need to build fusionTrack for this to exist
   else (WIN32)
     set (atracsys_LIBRARIES pthread rt "${atracsys_DIR}/lib/fusionTrack64.lib")
   endif (WIN32)
