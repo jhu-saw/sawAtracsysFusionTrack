@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -46,8 +46,8 @@ public:
 class mtsAtracsysFusionTrackInternals
 {
 public:
-	mtsAtracsysFusionTrackInternals(const size_t numberOfMarkers = 32) :
-		NumberOfMarkers(numberOfMarkers),
+    mtsAtracsysFusionTrackInternals(const size_t numberOfMarkers = 32) :
+        NumberOfMarkers(numberOfMarkers),
         Library(0),
         Device(0)
     {
@@ -60,11 +60,11 @@ public:
         
     };
 
-	size_t NumberOfMarkers;
+    size_t NumberOfMarkers;
     ftkLibrary Library;
     uint64 Device;
     ftkFrameQuery Frame;
-	ftkMarker * Markers;
+    ftkMarker * Markers;
     ftk3DFiducial threedFiducials[100u];
     bool Configured;
 
@@ -86,14 +86,14 @@ void mtsAtracsysFusionTrack::Construct(void)
 {
     Internals = new mtsAtracsysFusionTrackInternals();
 
-	StateTable.AddData(NumberOfThreeDFiducials, "NumberOfThreeDFiducials");
-	StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
+    StateTable.AddData(NumberOfThreeDFiducials, "NumberOfThreeDFiducials");
+    StateTable.AddData(ThreeDFiducialPosition, "ThreeDFiducialPosition");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
-       // provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
-		provided->AddCommandReadState(StateTable, NumberOfThreeDFiducials, "GetNumberOfThreeDFiducials");
-		provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
+        // provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
+        provided->AddCommandReadState(StateTable, NumberOfThreeDFiducials, "GetNumberOfThreeDFiducials");
+        provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
 
     }
 }
@@ -102,35 +102,35 @@ void mtsAtracsysFusionTrack::Construct(void)
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
 
-	CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
 
-	// initialize fusion track library
-	Internals->Library = ftkInit();
-	if (!Internals->Library) {
-		CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to initialize (" << this->GetName() << ")" << std::endl;
-		return;
-	}
+    // initialize fusion track library
+    Internals->Library = ftkInit();
+    if (!Internals->Library) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to initialize (" << this->GetName() << ")" << std::endl;
+        return;
+    }
 
-	// search for devices    
-	ftkError error = ftkEnumerateDevices(Internals->Library,
-		mtsAtracsysFusionTrackDeviceEnum,
-		&(Internals->Device));
-	if (error != FTK_OK) {
-		CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
-		ftkClose(Internals->Library);
-	}
-	for(int i = 0; i < 10; i++) {
-		CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
-		//ftkClose(Internals->Library);
-		//return;
-	ftkError error = ftkEnumerateDevices(Internals->Library,
-		mtsAtracsysFusionTrackDeviceEnum,
-		&(Internals->Device));
+    // search for devices
+    ftkError error = ftkEnumerateDevices(Internals->Library,
+        mtsAtracsysFusionTrackDeviceEnum,
+        &(Internals->Device));
+    if (error != FTK_OK) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
+        ftkClose(Internals->Library);
+    }
+    for(int i = 0; i < 10; i++) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
+        //ftkClose(Internals->Library);
+        //return;
+        ftkError error = ftkEnumerateDevices(Internals->Library,
+            mtsAtracsysFusionTrackDeviceEnum,
+            &(Internals->Device));
         if(Internals->Device != 0)
         {
             break;
         }
-	}
+    }
     if(Internals->Device == 0)
     {
         ftkClose(Internals->Library);
@@ -138,8 +138,8 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     }
 
 
-	// read JSON file passed as param, see configAtracsysFusionTrack.json for an example
-	std::ifstream jsonStream;
+    // read JSON file passed as param, see configAtracsysFusionTrack.json for an example
+    std::ifstream jsonStream;
     jsonStream.open(filename.c_str());
 
     Json::Value jsonConfig, jsonValue;
@@ -166,22 +166,22 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         // make sure toolName is valid
         if (toolName == "") 
         {
-        	CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << "\n";        	
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << "\n";           
         }
         else
         {
-        	std::string iniFile = jsonValue["ini-file"].asString();
+            std::string iniFile = jsonValue["ini-file"].asString();
 
-        	// make sure ini file is valid
-        	if(cmnPath::Exists(iniFile))
-        	{            
+            // make sure ini file is valid
+            if(cmnPath::Exists(iniFile))
+            {
                 CMN_LOG_CLASS_INIT_VERBOSE << "Configure: called AddToolIni with toolName: " << toolName << " and ini file location: " << iniFile << std::endl;
-        		AddToolIni(toolName, iniFile);
-        	}
-        	else
-        	{
-        		CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile << " not found\n";        	
-        	}
+                AddToolIni(toolName, iniFile);
+            }
+            else
+            {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile << " not found\n";            
+            }
         }        
     }
 
@@ -197,119 +197,121 @@ void mtsAtracsysFusionTrack::Startup(void)
 
 void mtsAtracsysFusionTrack::Run(void)
 {
-	// process mts commands
-	ProcessQueuedCommands();
+    // process mts commands
+    ProcessQueuedCommands();
 
-	// get latest frame from fusion track library/device
-	if (ftkGetLastFrame(Internals->Library,
-		Internals->Device,
-		&(Internals->Frame),
-		0 ) != FTK_OK) {
-		CMN_LOG_CLASS_RUN_DEBUG << "Run: timeout on ftkGetLastFrame" << std::endl;
-		return;
-	}
+    // get latest frame from fusion track library/device
+    if (ftkGetLastFrame(Internals->Library,
+        Internals->Device,
+        &(Internals->Frame),
+        0 ) != FTK_OK) {
+        CMN_LOG_CLASS_RUN_DEBUG << "Run: timeout on ftkGetLastFrame" << std::endl;
+        return;
+    }
 
-	// check results of last frame
-	switch (Internals->Frame.markersStat) {
-	case QS_WAR_SKIPPED:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
-	case QS_ERR_INVALID_RESERVED_SIZE:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
-	default:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
-	case QS_OK:
-		break;
-	}
+    // check results of last frame
+    switch (Internals->Frame.markersStat) {
+    case QS_WAR_SKIPPED:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
+    case QS_ERR_INVALID_RESERVED_SIZE:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
+    default:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+    case QS_OK:
+        break;
+    }
 
-	// make sure we're not getting more markers than allocated
-	size_t count = Internals->Frame.markersCount;
-	if (count > Internals->NumberOfMarkers) {
-		CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
-			<< Internals->NumberOfMarkers << " marker(s) will processed." << std::endl;
-		count = Internals->NumberOfMarkers;
-	}
+    // make sure we're not getting more markers than allocated
+    size_t count = Internals->Frame.markersCount;
+    if (count > Internals->NumberOfMarkers) {
+        CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
+            << Internals->NumberOfMarkers << " marker(s) will processed." << std::endl;
+        count = Internals->NumberOfMarkers;
+    }
 
-	// initialize all tools
-	const ToolsType::iterator end = Tools.end();
-	ToolsType::iterator iter;
-	for (iter = Tools.begin(); iter != end; ++iter) {
-		iter->second->StateTable.Start();
-		iter->second->Position.SetValid(false);
-	}
+    // initialize all tools
+    const ToolsType::iterator end = Tools.end();
+    ToolsType::iterator iter;
+    for (iter = Tools.begin(); iter != end; ++iter) {
+        iter->second->StateTable.Start();
+        iter->second->Position.SetValid(false);
+    }
 
-	// for each marker, get the data and populate corresponding tool
-	for (size_t index = 0; index < count; ++index) {
-		ftkMarker * currentMarker = &(Internals->Markers[index]);
-		// find the appropriate tool
-		if (Internals->GeometryIdToTool.find(currentMarker->geometryId) == Internals->GeometryIdToTool.end()) {
-			CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id not registered using AddTool, this marker will be ignored ("
-				<< this->GetName() << ")" << std::endl;
-		}
-		else {
-			mtsAtracsysFusionTrackTool * tool = Internals->GeometryIdToTool.at(currentMarker->geometryId);
-			tool->Position.SetValid(true);
-			tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
-				currentMarker->translationMM[1],
-				currentMarker->translationMM[2]);
-			for (size_t row = 0; row < 3; ++row) {
-				for (size_t col = 0; col < 3; ++col) {
-					tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
-				}
-			}
+    // for each marker, get the data and populate corresponding tool
+    for (size_t index = 0; index < count; ++index) {
+        ftkMarker * currentMarker = &(Internals->Markers[index]);
+        // find the appropriate tool
+        mtsAtracsysFusionTrackInternals::GeometryIdToToolMap::const_iterator it;
+        it = Internals->GeometryIdToTool.find(currentMarker->geometryId);
+        if (it == Internals->GeometryIdToTool.end()) {
+            CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id not registered using AddTool, this marker will be ignored ("
+                << this->GetName() << ")" << std::endl;
+        }
+        else {
+            mtsAtracsysFusionTrackTool * tool = it->second;
+            tool->Position.SetValid(true);
+            tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
+                currentMarker->translationMM[1],
+                currentMarker->translationMM[2]);
+            for (size_t row = 0; row < 3; ++row) {
+                for (size_t col = 0; col < 3; ++col) {
+                    tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
+                }
+            }
 
-			tool->RegistrationError = currentMarker->registrationErrorMM;
-			
+            tool->RegistrationError = currentMarker->registrationErrorMM;
+
             /*
-			printf("Marker:\n");
-			printf("XYZ (%.2f %.2f %.2f)\n",
-					currentMarker->translationMM[0],
-					currentMarker->translationMM[1],
-					currentMarker->translationMM[2]);
+            printf("Marker:\n");
+            printf("XYZ (%.2f %.2f %.2f)\n",
+                    currentMarker->translationMM[0],
+                    currentMarker->translationMM[1],
+                    currentMarker->translationMM[2]);
              */
-		}
-	}
+        }
+    }
 
-	// finalize all tools
-	for (iter = Tools.begin(); iter != end; ++iter) {
-		iter->second->StateTable.Advance();
-	}
+    // finalize all tools
+    for (iter = Tools.begin(); iter != end; ++iter) {
+        iter->second->StateTable.Advance();
+    }
 
-	// ---- 3D Fiducials ---
-	switch (Internals->Frame.threeDFiducialsStat)
-	{
-	case QS_WAR_SKIPPED:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
-	case QS_ERR_INVALID_RESERVED_SIZE:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
-	default:
-		CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
-	case QS_OK:
-		break;
-	}
+    // ---- 3D Fiducials ---
+    switch (Internals->Frame.threeDFiducialsStat)
+    {
+    case QS_WAR_SKIPPED:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
+    case QS_ERR_INVALID_RESERVED_SIZE:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
+    default:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+    case QS_OK:
+        break;
+    }
 
-	ThreeDFiducialPosition.clear();
-	NumberOfThreeDFiducials = Internals->Frame.threeDFiducialsCount;
-	ThreeDFiducialPosition.resize(NumberOfThreeDFiducials);
+    ThreeDFiducialPosition.clear();
+    NumberOfThreeDFiducials = Internals->Frame.threeDFiducialsCount;
+    ThreeDFiducialPosition.resize(NumberOfThreeDFiducials);
 
 
-	//printf("3D fiducials:\n");
-	for (uint32 m = 0; m < NumberOfThreeDFiducials; m++)
-	{
+    //printf("3D fiducials:\n");
+    for (int m = 0; m < NumberOfThreeDFiducials; m++)
+    {
         /*
-		printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
-			Internals->threedFiducials[m].leftIndex,
-			Internals->threedFiducials[m].rightIndex,
-			Internals->threedFiducials[m].positionMM.x,
-			Internals->threedFiducials[m].positionMM.y,
-			Internals->threedFiducials[m].positionMM.z,
-			Internals->threedFiducials[m].epipolarErrorPixels,
-			Internals->threedFiducials[m].triangulationErrorMM,
-			Internals->threedFiducials[m].probability);
+        printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
+            Internals->threedFiducials[m].leftIndex,
+            Internals->threedFiducials[m].rightIndex,
+            Internals->threedFiducials[m].positionMM.x,
+            Internals->threedFiducials[m].positionMM.y,
+            Internals->threedFiducials[m].positionMM.z,
+            Internals->threedFiducials[m].epipolarErrorPixels,
+            Internals->threedFiducials[m].triangulationErrorMM,
+            Internals->threedFiducials[m].probability);
         */
-		ThreeDFiducialPosition[m].X() = Internals->threedFiducials[m].positionMM.x;
-		ThreeDFiducialPosition[m].Y() = Internals->threedFiducials[m].positionMM.y;
-		ThreeDFiducialPosition[m].Z() = Internals->threedFiducials[m].positionMM.z;
-	}
+        ThreeDFiducialPosition[m].X() = Internals->threedFiducials[m].positionMM.x;
+        ThreeDFiducialPosition[m].Y() = Internals->threedFiducials[m].positionMM.y;
+        ThreeDFiducialPosition[m].Z() = Internals->threedFiducials[m].positionMM.z;
+    }
 
 }
 
@@ -323,7 +325,7 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
 {
 
     // check if this tool already exists
-    mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);    
+    mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);
     if (tool) {
         CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
         return false;
