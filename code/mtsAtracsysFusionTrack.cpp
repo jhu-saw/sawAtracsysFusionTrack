@@ -51,19 +51,20 @@ public:
         Library(0),
         Device(0)
     {
-        memset(&Frame, 0, sizeof(ftkFrameQuery));
+        //memset(&Frame, 0, sizeof(ftkFrameQuery));
+        Frame = ftkCreateFrame();
         Markers = new ftkMarker[NumberOfMarkers];
-        Frame.markers = Markers;
-        Frame.markersVersionSize.ReservedSize = sizeof(ftkMarker) * NumberOfMarkers;
-        Frame.threeDFiducials = threedFiducials;
-        Frame.threeDFiducialsVersionSize.ReservedSize = sizeof (threedFiducials);
+        Frame->markers = Markers;
+        Frame->markersVersionSize.ReservedSize = sizeof(ftkMarker) * NumberOfMarkers;
+        Frame->threeDFiducials = threedFiducials;
+        Frame->threeDFiducialsVersionSize.ReservedSize = sizeof (threedFiducials);
         
     };
 
 	size_t NumberOfMarkers;
     ftkLibrary Library;
     uint64 Device;
-    ftkFrameQuery Frame;
+    ftkFrameQuery * Frame;
 	ftkMarker * Markers;
     ftk3DFiducial threedFiducials[100u];
 
@@ -141,14 +142,14 @@ void mtsAtracsysFusionTrack::Run(void)
 	// get latest frame from fusion track library/device
 	if (ftkGetLastFrame(Internals->Library,
 		Internals->Device,
-		&(Internals->Frame),
-		0 ) != FTK_OK) {
+		Internals->Frame,
+		100 ) != FTK_OK) {
 		CMN_LOG_CLASS_RUN_DEBUG << "Run: timeout on ftkGetLastFrame" << std::endl;
 		return;
 	}
 
 	// check results of last frame
-	switch (Internals->Frame.markersStat) {
+	switch (Internals->Frame->markersStat) {
 	case QS_WAR_SKIPPED:
 		CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
 	case QS_ERR_INVALID_RESERVED_SIZE:
@@ -160,7 +161,7 @@ void mtsAtracsysFusionTrack::Run(void)
 	}
 
 	// make sure we're not getting more markers than allocated
-	size_t count = Internals->Frame.markersCount;
+	size_t count = Internals->Frame->markersCount;
 	if (count > Internals->NumberOfMarkers) {
 		CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
 			<< Internals->NumberOfMarkers << " marker(s) will processed." << std::endl;
@@ -213,7 +214,7 @@ void mtsAtracsysFusionTrack::Run(void)
 	}
 
 	// ---- 3D Fiducials ---
-	switch (Internals->Frame.threeDFiducialsStat)
+	switch (Internals->Frame->threeDFiducialsStat)
 	{
 	case QS_WAR_SKIPPED:
 		CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
@@ -226,7 +227,7 @@ void mtsAtracsysFusionTrack::Run(void)
 	}
 
 	ThreeDFiducialPosition.clear();
-	NumberOfThreeDFiducials = Internals->Frame.threeDFiducialsCount;
+	NumberOfThreeDFiducials = Internals->Frame->threeDFiducialsCount;
 	ThreeDFiducialPosition.resize(NumberOfThreeDFiducials);
 
 
