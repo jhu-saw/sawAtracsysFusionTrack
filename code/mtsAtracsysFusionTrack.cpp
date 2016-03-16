@@ -50,7 +50,7 @@ public:
     mtsAtracsysFusionTrackInternals(const size_t numberOfMarkers = 32) :
         NumberOfMarkers(numberOfMarkers),
         Library(0),
-        Device(0)
+        Device(0LL)
     {
         //memset(&Frame, 0, sizeof(ftkFrameQuery));
         Frame = ftkCreateFrame();
@@ -113,31 +113,29 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
-    // search for devices
-    ftkError error = ftkEnumerateDevices(Internals->Library,
+    for (int i = 0; i < 10; i++) {
+        // search for devices
+        ftkError error = ftkEnumerateDevices(Internals->Library,
                                          mtsAtracsysFusionTrackDeviceEnum,
                                          &(Internals->Device));
-    if (error != FTK_OK) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
-        ftkClose(Internals->Library);
-    }
-    for (int i = 0; i < 10; i++) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
-        //ftkClose(Internals->Library);
-        //return;
-        ftkError error = ftkEnumerateDevices(Internals->Library,
-                                             mtsAtracsysFusionTrackDeviceEnum,
-                                             &(Internals->Device));
-        if (Internals->Device != 0)
+        if (error != FTK_OK) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices (" << this->GetName() << ")" << std::endl;
+            ftkClose(Internals->Library);
+        }
+        
+        if (Internals->Device != 0LL)
             {
                 break;
             }
     }
-    if(Internals->Device == 0)
+    if(Internals->Device == 0LL)
         {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected (" << this->GetName() << ")" << std::endl;
             ftkClose(Internals->Library);
             return;
         }
+
+    std::cerr << "configure" << std::endl;
 
 
     // read JSON file passed as param, see configAtracsysFusionTrack.json for an example
