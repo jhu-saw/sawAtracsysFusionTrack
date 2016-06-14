@@ -82,7 +82,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
   # Set the version number
   set (sawAtracsysFusionTrack_VERSION_MAJOR "1")
-  set (sawAtracsysFusionTrack_VERSION_MINOR "3")
+  set (sawAtracsysFusionTrack_VERSION_MINOR "1")
   set (sawAtracsysFusionTrack_VERSION_PATCH "0")
   set (sawAtracsysFusionTrack_VERSION "${sawAtracsysFusionTrack_VERSION_MAJOR}.${sawAtracsysFusionTrack_VERSION_MINOR}.${sawAtracsysFusionTrack_VERSION_PATCH}")
 
