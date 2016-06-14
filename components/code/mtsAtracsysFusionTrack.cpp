@@ -114,7 +114,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
-    for (int i = 0; i < 10; i++) {
+    for (size_t i = 0; i < 10; i++) {
         // search for devices
         ftkError error = ftkEnumerateDevices(Internals->Library,
                                              mtsAtracsysFusionTrackDeviceEnum,
@@ -136,6 +136,10 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
+    if (filename == "") {
+        return;
+    }
+
     // read JSON file passed as param, see configAtracsysFusionTrack.json for an example
     std::ifstream jsonStream;
     jsonStream.open(filename.c_str());
@@ -143,17 +147,15 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     Json::Value jsonConfig, jsonValue;
     Json::Reader jsonReader;
     if (!jsonReader.parse(jsonStream, jsonConfig)) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to parse configuration\n"
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to parse configuration" << std::endl
                                  << jsonReader.getFormattedErrorMessages();
         Internals->Configured = false;
         return;
     }
 
     // allows the use of relative paths for ini files
-    // cmnPath configPath(cmnPath::GetWorkingDirectory());
-    // std::string fullname = configPath.Find(filename);
-    // std::string configDir = fullname.substr(0, fullname.find_last_of('/'));
-    // configPath.Add(configDir);
+    cmnPath configPath(cmnPath::GetWorkingDirectory());
+
 
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
@@ -163,16 +165,17 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 
         // make sure toolName is valid
         if (toolName == "") {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << "\n";
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << std::endl;
         } else {
             std::string iniFile = jsonValue["ini-file"].asString();
-
+            std::string fullname = configPath.Find(iniFile);
             // make sure ini file is valid
-            if (cmnPath::Exists(iniFile)) {
+            if (cmnPath::Exists(fullname)) {
                 CMN_LOG_CLASS_INIT_VERBOSE << "Configure: called AddToolIni with toolName: " << toolName << " and ini file location: " << iniFile << std::endl;
-                AddToolIni(toolName, iniFile);
+                AddToolIni(toolName, fullname);
             } else {
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile << " not found\n";
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile
+                                         << " not found in path (" << configPath << ")" << std::endl;
             }
         }
     }
@@ -375,7 +378,6 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
     tool->Interface->AddCommandReadState(tool->StateTable,
                                          tool->StateTable.PeriodStats,
                                          "GetPeriodStatistics");
-
     return true;
 }
 

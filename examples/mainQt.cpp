@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -24,6 +24,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
+#include <cisstCommon/cmnCommandLineOptions.h>
 #include <cisstMultiTask/mtsCollectorState.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
@@ -42,10 +43,28 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
+    // parse options
+    cmnCommandLineOptions options;
+    std::string jsonConfigFile;
+
+    options.AddOptionOneValue("j", "json-config",
+                              "json configuration file",
+                              cmnCommandLineOptions::REQUIRED_OPTION, &jsonConfigFile);
+
+    // check that all required options have been provided
+    std::string errorMessage;
+    if (!options.Parse(argc, argv, errorMessage)) {
+        std::cerr << "Error: " << errorMessage << std::endl;
+        options.PrintUsage(std::cerr);
+        return -1;
+    }
+    std::string arguments;
+    options.PrintParsedArguments(arguments);
+    std::cout << "Options provided:" << std::endl << arguments << std::endl;
+
     // create the components
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
-    tracker->Configure("empty");
-    tracker->AddToolIni("MS3-04-004", "geometry003.ini");
+    tracker->Configure(jsonConfigFile);
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
@@ -57,13 +76,17 @@ int main(int argc, char * argv[])
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;
 
-    mtsAtracsysFusionTrackToolQtWidget *
-        toolWidget = new mtsAtracsysFusionTrackToolQtWidget("MS3-04-004-GUI");
-    toolWidget->Configure();
-    componentManager->AddComponent(toolWidget);
-    componentManager->Connect(toolWidget->GetName(), "Tool",
-                              tracker->GetName(), "MS3-04-004");
-    tabWidget->addTab(toolWidget, "MS3-04-004");
+    std::string toolName;
+    mtsAtracsysFusionTrackToolQtWidget * toolWidget;
+    for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
+        toolName = tracker->GetToolName(tool);
+        toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");
+        toolWidget->Configure();
+        componentManager->AddComponent(toolWidget);
+        componentManager->Connect(toolWidget->GetName(), "Tool",
+                                  tracker->GetName(), toolName);
+        tabWidget->addTab(toolWidget, toolName.c_str());
+    }
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
