@@ -106,6 +106,11 @@ int main(int argc, char * argv[])
         tabWidget->addTab(toolWidget, toolName.c_str());
     }
 
+    // add ROS bridge for stray markers
+    rosBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
+        ("Controller", "GetThreeDFiducialPosition",
+         "/atracsys/fiducials");
+    
     // add the bridge after all interfaces have been created
     componentManager->AddComponent(rosBridge);
 
@@ -115,6 +120,8 @@ int main(int argc, char * argv[])
         componentManager->Connect(rosBridge->GetName(), toolName,
                                   tracker->GetName(), toolName);
     }
+    componentManager->Connect(rosBridge->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
