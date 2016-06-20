@@ -44,11 +44,11 @@ int main(int argc, char * argv[])
 
     // parse options
     cmnCommandLineOptions options;
-    std::string jsonConfigFile;
+    std::string jsonConfigFile = "";
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
-                              cmnCommandLineOptions::REQUIRED_OPTION, &jsonConfigFile);
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &jsonConfigFile);
 
     // check that all required options have been provided
     std::string errorMessage;
