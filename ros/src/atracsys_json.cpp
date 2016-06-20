@@ -29,6 +29,9 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
 
+#include <ros/ros.h>
+#include <cisst_ros_bridge/mtsROSBridge.h>
+
 #include <QApplication>
 #include <QMainWindow>
 
@@ -45,10 +48,14 @@ int main(int argc, char * argv[])
     // parse options
     cmnCommandLineOptions options;
     std::string jsonConfigFile = "";
+    double rosPeriod = 10.0 * cmn_ms;
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &jsonConfigFile);
+    options.AddOptionOneValue("p", "ros-period",
+                              "period in seconds to read all tool positions (default 0.01, 10 ms, 100Hz).  There is no point to have a period higher than the tracker component",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -69,6 +76,9 @@ int main(int argc, char * argv[])
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
 
+    // ROS bridge
+    mtsROSBridge * rosBridge = new mtsROSBridge("AtracsysBridge", rosPeriod, true);
+
     // create a Qt user interface
     QApplication application(argc, argv);
 
@@ -77,8 +87,17 @@ int main(int argc, char * argv[])
 
     std::string toolName;
     mtsAtracsysFusionTrackToolQtWidget * toolWidget;
+
+    // configure all components
     for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
         toolName = tracker->GetToolName(tool);
+        // ROS publisher
+        std::string topicName = toolName;
+        std::replace(topicName.begin(), topicName.end(), '-', '_');
+        rosBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
+            (toolName, "GetPositionCartesian",
+             "/atracsys/" + topicName);
+        // Qt Widget
         toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");
         toolWidget->Configure();
         componentManager->AddComponent(toolWidget);
@@ -86,6 +105,23 @@ int main(int argc, char * argv[])
                                   tracker->GetName(), toolName);
         tabWidget->addTab(toolWidget, toolName.c_str());
     }
+
+    // add ROS bridge for stray markers
+    rosBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
+        ("Controller", "GetThreeDFiducialPosition",
+         "/atracsys/fiducials");
+    
+    // add the bridge after all interfaces have been created
+    componentManager->AddComponent(rosBridge);
+
+    // connect all interfaces for the ROS bridge
+    for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
+        toolName = tracker->GetToolName(tool);
+        componentManager->Connect(rosBridge->GetName(), toolName,
+                                  tracker->GetName(), toolName);
+    }
+    componentManager->Connect(rosBridge->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
 
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);

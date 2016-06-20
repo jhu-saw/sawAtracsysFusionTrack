@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014 Johns Hopkins University (JHU), All Rights
+# (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights
 # Reserved.
 #
 # --- begin cisst license - do not edit ---
@@ -10,6 +10,7 @@
 #
 # --- end cisst license ---
 
-project (sawAtracsysFusionTrack)
-add_subdirectory (code)
+cmake_minimum_required (VERSION 2.8)
+
+add_subdirectory (components)
 add_subdirectory (examples)

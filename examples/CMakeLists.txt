@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -8,6 +8,8 @@
 # http://www.cisst.org/cisst/license.txt.
 #
 # --- end cisst license ---
+
+cmake_minimum_required (VERSION 2.8)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
@@ -22,13 +24,19 @@ set (REQUIRED_CISST_LIBRARIES cisstCommon
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND)
+if (cisst_FOUND_AS_REQUIRED)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
 
+  # catkin/ROS paths
+  cisst_is_catkin_build (sawAtracsysFusionTrackExamples_IS_CATKIN_BUILT)
+  if (sawAtracsysFusionTrackExamples_IS_CATKIN_BUILT)
+    set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
+  endif ()
+
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
-  cisst_find_saw_component (sawAtracsysFusionTrack REQUIRED)
+  find_package (sawAtracsysFusionTrack)
 
   if (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
@@ -67,6 +75,8 @@ if (cisst_FOUND)
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackExample ${REQUIRED_CISST_LIBRARIES})
 
+  else (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack and cisstQt")
   endif (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
-endif (cisst_FOUND)
+endif (cisst_FOUND_AS_REQUIRED)
