@@ -36,7 +36,7 @@ if (cisst_FOUND_AS_REQUIRED)
   endif ()
 
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
-  cisst_find_saw_component (sawAtracsysFusionTrack REQUIRED)
+  find_package (sawAtracsysFusionTrack)
 
   if (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
@@ -75,6 +75,8 @@ if (cisst_FOUND_AS_REQUIRED)
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackExample ${REQUIRED_CISST_LIBRARIES})
 
+  else (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack and cisstQt")
   endif (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
 endif (cisst_FOUND_AS_REQUIRED)

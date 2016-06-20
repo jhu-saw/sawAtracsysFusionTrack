@@ -53,17 +53,23 @@ if (cisst_FOUND_AS_REQUIRED)
                   DEPENDS ${REQUIRED_CISST_LIBRARIES})
 
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
-  find_package (sawAtracsysFusionTrack 1.1.0 REQUIRED)
+  find_package (sawAtracsysFusionTrack 1.1.0)
 
-  include_directories (${CATKIN_DEVEL_PREFIX}/include
-                       ${sawAtracsysFusionTrack_INCLUDE_DIR})
+  if (sawAtracsysFusionTrack_FOUND)
 
-  link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
+    include_directories (${CATKIN_DEVEL_PREFIX}/include
+                         ${sawAtracsysFusionTrack_INCLUDE_DIR})
 
-  add_executable (atracsys_json src/atracsys_json.cpp)
-  target_link_libraries (atracsys_json
-                         ${sawAtracsysFusionTrack_LIBRARIES}
-                         ${catkin_LIBRARIES})
-  cisst_target_link_libraries (atracsys_json ${REQUIRED_CISST_LIBRARIES})
+    link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
+
+    add_executable (atracsys_json src/atracsys_json.cpp)
+    target_link_libraries (atracsys_json
+                           ${sawAtracsysFusionTrack_LIBRARIES}
+                           ${catkin_LIBRARIES})
+    cisst_target_link_libraries (atracsys_json ${REQUIRED_CISST_LIBRARIES})
+
+  else (sawAtracsysFusionTrack_FOUND)
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack")
+  endif (sawAtracsysFusionTrack_FOUND)
 
 endif (cisst_FOUND_AS_REQUIRED)

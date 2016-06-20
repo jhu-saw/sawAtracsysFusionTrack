@@ -42,6 +42,7 @@ if (cisst_FOUND_AS_REQUIRED)
   endif ()
 
   # this should be replaced by a find AtracsysFusionTrack
+  set (atracsys_FOUND 0)
   if (WIN32)
     # Windows
     set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
@@ -49,88 +50,97 @@ if (cisst_FOUND_AS_REQUIRED)
                          ${atracsys_DIR}/bin)
     link_directories (${atracsys_DIR}/bin)
     set (atracsys_LIBRARIES winmm fusionTrack64.lib)
+    set (atracsys_FOUND 1)
     # Linux
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_path (atracsys_DIR
                NAMES "ftkInterface.h"
                PATH_SUFFIXES "src/include")
-    include_directories (${atracsys_DIR}/src/include)
-    # libraries
-    link_directories (${atracsys_DIR}/bin)
-    set (atracsys_LIBRARIES pthread rt fusionTrack64 device64)
-    # copy the binary provided for fusionTrack in cisst/saw library directory
-    find_library (atracsys_LIBRARY_fusionTrack
-                  NAMES fusionTrack64
-                  PATHS ${atracsys_DIR}/bin)
-    find_library (atracsys_LIBRARY_device
-                  NAMES device64
-                  PATHS ${atracsys_DIR}/bin)
-    file (MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
-    file (COPY ${atracsys_LIBRARY_fusionTrack} ${atracsys_LIBRARY_device}
-          DESTINATION ${LIBRARY_OUTPUT_PATH})
+    if (EXISTS "${atracsys_DIR}/src/include/ftkInterface.h")
+      set (atracsys_FOUND 1)
+      include_directories (${atracsys_DIR}/src/include)
+      # libraries
+      link_directories (${atracsys_DIR}/bin)
+      set (atracsys_LIBRARIES pthread rt fusionTrack64 device64)
+      # copy the binary provided for fusionTrack in cisst/saw library directory
+      find_library (atracsys_LIBRARY_fusionTrack
+                    NAMES fusionTrack64
+                    PATHS ${atracsys_DIR}/bin)
+      find_library (atracsys_LIBRARY_device
+                    NAMES device64
+                    PATHS ${atracsys_DIR}/bin)
+      file (MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
+      file (COPY ${atracsys_LIBRARY_fusionTrack} ${atracsys_LIBRARY_device}
+            DESTINATION ${LIBRARY_OUTPUT_PATH})
+    endif ()
   else (WIN32)
     # Everything else
     set (atracsys_LIBRARIES pthread rt fusionTrack64)
   endif (WIN32)
 
-  # create/configure file for find_package (sawAtracsysFusionTrack)
-  set (sawAtracsysFusionTrack_INCLUDE_DIR
-       "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
-       "${sawAtracsysFusionTrack_BINARY_DIR}/include")
-  set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
-  set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
+  # if we found the actracsys SDK
+  if (atracsys_FOUND)
+    # create/configure file for find_package (sawAtracsysFusionTrack)
+    set (sawAtracsysFusionTrack_INCLUDE_DIR
+         "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
+         "${sawAtracsysFusionTrack_BINARY_DIR}/include")
+    set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
+    set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
-  # Set the version number
-  set (sawAtracsysFusionTrack_VERSION_MAJOR "1")
-  set (sawAtracsysFusionTrack_VERSION_MINOR "1")
-  set (sawAtracsysFusionTrack_VERSION_PATCH "0")
-  set (sawAtracsysFusionTrack_VERSION "${sawAtracsysFusionTrack_VERSION_MAJOR}.${sawAtracsysFusionTrack_VERSION_MINOR}.${sawAtracsysFusionTrack_VERSION_PATCH}")
+    # Set the version number
+    set (sawAtracsysFusionTrack_VERSION_MAJOR "1")
+    set (sawAtracsysFusionTrack_VERSION_MINOR "1")
+    set (sawAtracsysFusionTrack_VERSION_PATCH "0")
+    set (sawAtracsysFusionTrack_VERSION "${sawAtracsysFusionTrack_VERSION_MAJOR}.${sawAtracsysFusionTrack_VERSION_MINOR}.${sawAtracsysFusionTrack_VERSION_PATCH}")
 
-  # Generate sawAtracsysFusionTrackRevision.h
-  configure_file ("${sawAtracsysFusionTrack_SOURCE_DIR}/code/sawAtracsysFusionTrackRevision.h.in"
-                  "${sawAtracsysFusionTrack_BINARY_DIR}/include/sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h")
+    # Generate sawAtracsysFusionTrackRevision.h
+    configure_file ("${sawAtracsysFusionTrack_SOURCE_DIR}/code/sawAtracsysFusionTrackRevision.h.in"
+                    "${sawAtracsysFusionTrack_BINARY_DIR}/include/sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h")
 
-  include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
-  set (sawAtracsysFusionTrack_HEADER_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack")
+    include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
+    set (sawAtracsysFusionTrack_HEADER_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack")
 
-  add_library (sawAtracsysFusionTrack
-               ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackExport.h
-               code/mtsAtracsysFusionTrack.cpp
-               ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
-  set_property (TARGET sawAtracsysFusionTrack PROPERTY FOLDER "sawAtracsysFusionTrack")
-  cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
-  target_link_libraries (sawAtracsysFusionTrack ${atracsys_LIBRARIES})
+    add_library (sawAtracsysFusionTrack
+                 ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackExport.h
+                 code/mtsAtracsysFusionTrack.cpp
+                 ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
+    set_property (TARGET sawAtracsysFusionTrack PROPERTY FOLDER "sawAtracsysFusionTrack")
+    cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
+    target_link_libraries (sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
-  # add Qt code
-  add_subdirectory (code/Qt)
-  set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${sawAtracsysFusionTrackQt_LIBRARIES})
+    # add Qt code
+    add_subdirectory (code/Qt)
+    set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${sawAtracsysFusionTrackQt_LIBRARIES})
 
-  set (sawAtracsysFusionTrack_CMAKE_CONFIG_FILE
-       "${sawAtracsysFusionTrack_CONFIG_FILE_DIR}/sawAtracsysFusionTrackConfig.cmake")
+    set (sawAtracsysFusionTrack_CMAKE_CONFIG_FILE
+         "${sawAtracsysFusionTrack_CONFIG_FILE_DIR}/sawAtracsysFusionTrackConfig.cmake")
 
-  configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/sawAtracsysFusionTrackConfig.cmake.in"
-                  "${sawAtracsysFusionTrack_CMAKE_CONFIG_FILE}"
-                  @ONLY)
+    configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/cmake/sawAtracsysFusionTrackConfig.cmake.in"
+                    "${sawAtracsysFusionTrack_CMAKE_CONFIG_FILE}"
+                    @ONLY)
 
-  cisst_add_config_version ("${sawAtracsysFusionTrack_CONFIG_FILE_DIR}/sawAtracsysFusionTrackConfigVersion.cmake"
-                            VERSION ${sawAtracsysFusionTrack_VERSION}
-                            DESTINATION ${CISST_CMAKE_INSTALL_SUFFIX}/saw
-                            COMPONENT sawAtracsysFusionTrack)
+    cisst_add_config_version ("${sawAtracsysFusionTrack_CONFIG_FILE_DIR}/sawAtracsysFusionTrackConfigVersion.cmake"
+                              VERSION ${sawAtracsysFusionTrack_VERSION}
+                              DESTINATION ${CISST_CMAKE_INSTALL_SUFFIX}/saw
+                              COMPONENT sawAtracsysFusionTrack)
 
-  # Install target for headers and library
-  install (DIRECTORY
-           "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack"
-           DESTINATION include
-           PATTERN .svn EXCLUDE)
+    # Install target for headers and library
+    install (DIRECTORY
+             "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack"
+             DESTINATION include
+             PATTERN .svn EXCLUDE)
 
-  install (TARGETS sawAtracsysFusionTrack
-           RUNTIME DESTINATION bin
-           LIBRARY DESTINATION lib
-           ARCHIVE DESTINATION lib)
+    install (TARGETS sawAtracsysFusionTrack
+             RUNTIME DESTINATION bin
+             LIBRARY DESTINATION lib
+             ARCHIVE DESTINATION lib)
 
-  install (FILES "${sawAtracsysFusionTrack_BINARY_DIR}/sawAtracsysFusionTrackConfig.cmake"
-           DESTINATION "${CISST_CMAKE_INSTALL_SUFFIX}/saw")
+    install (FILES "${sawAtracsysFusionTrack_BINARY_DIR}/sawAtracsysFusionTrackConfig.cmake"
+             DESTINATION "${CISST_CMAKE_INSTALL_SUFFIX}/saw")
 
+  else (atracsys_FOUND)
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires the Atracsys SDK.  Please set atracsys_DIR using CMake, e.g. ccmake ${CMAKE_CURRENT_BINARY_DIR} or cmake-gui ${CMAKE_CURRENT_BINARY_DIR}")
+  endif (atracsys_FOUND)
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
 endif (cisst_FOUND_AS_REQUIRED)
