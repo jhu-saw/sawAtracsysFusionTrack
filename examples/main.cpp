@@ -32,7 +32,7 @@ http://www.cisst.org/cisst/license.txt.
 #include "sawAtracsysFusionTrackDataLinker.h"
 
 
-int main(int argc, char * argv[])
+int main(int CMN_UNUSED(argc), char * CMN_UNUSED(argv[]))
 {
     // log configuration
     cmnLogger::SetMask(CMN_LOG_ALLOW_ALL);
@@ -74,9 +74,8 @@ int main(int argc, char * argv[])
     componentManager->StartAll();
     componentManager->WaitForStateAll(mtsComponentState::ACTIVE, 2.0 * cmn_s);
     
-    int ch;
-    bool started = false;
-    while (ch != 'q') {
+    std::cout << "Hit `ctrl-c` to quit" << std::endl;
+    while (true) {
         osaSleep(1.0 * cmn_s);
     }
     
