@@ -84,7 +84,7 @@ if (cisst_FOUND_AS_REQUIRED)
     set (sawAtracsysFusionTrack_INCLUDE_DIR
          "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
          "${sawAtracsysFusionTrack_BINARY_DIR}/include")
-    set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}")
+    set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}" "${atracsys_DIR}/lib")
     set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
     # Set the version number
