@@ -16,18 +16,13 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
-/*!
-  \file
-  \brief An example interface for NDI trackers with serial interface.
-  \ingroup devicesTutorial
-*/
-
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
+#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -75,6 +70,16 @@ int main(int argc, char * argv[])
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;
 
+    // stray markers
+    mtsAtracsysFusionTrackStrayMarkersQtWidget * strayMarkersWidget;
+    strayMarkersWidget = new mtsAtracsysFusionTrackStrayMarkersQtWidget("StrayMarkers-GUI");
+    strayMarkersWidget->Configure();
+    componentManager->AddComponent(strayMarkersWidget);
+    componentManager->Connect(strayMarkersWidget->GetName(), "Controller",
+                              tracker->GetName(), "Controller");
+    tabWidget->addTab(strayMarkersWidget, "Stray Markers");
+
+    // tools
     std::string toolName;
     mtsAtracsysFusionTrackToolQtWidget * toolWidget;
     for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {

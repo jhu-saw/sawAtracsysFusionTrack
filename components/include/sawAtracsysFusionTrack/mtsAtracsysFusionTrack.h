@@ -88,8 +88,8 @@ protected:
     typedef cmnNamedMap<mtsAtracsysFusionTrackTool> ToolsType;
     ToolsType Tools;
 
-	int NumberOfThreeDFiducials;
-	std::vector<vct3> ThreeDFiducialPosition;
+    int NumberOfThreeDFiducials;
+    std::vector<vct3> ThreeDFiducialPosition;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrack);

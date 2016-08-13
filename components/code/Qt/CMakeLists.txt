@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -15,7 +15,7 @@ set (REQUIRED_CISST_LIBRARIES
      cisstVectorQt
      cisstOSAbstraction
      cisstMultiTask
-	 cisstMultiTaskQt
+     cisstMultiTaskQt
      cisstParameterTypes
      cisstParameterTypesQt
      cisstQt)
@@ -31,17 +31,20 @@ if (cisst_FOUND_AS_REQUIRED)
   # for Qt generated header files
   include_directories (${CMAKE_CURRENT_BINARY_DIR})
   if (CISST_HAS_QT4)
-    qt4_wrap_cpp (SAW_INTUITIVE_RESEARCH_KIT_QT_WRAP_CPP
-                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolQtWidget.h)
+    qt4_wrap_cpp (SAW_ATRACSYS_FUSION_TRACK_QT_WRAP_CPP
+                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolQtWidget.h
+                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackStrayMarkersQtWidget.h)
   else (CISST_HAS_QT4)
     set (CMAKE_AUTOMOC ON)
   endif (CISST_HAS_QT4)
 
   add_library (sawAtracsysFusionTrackQt
                ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolQtWidget.h
-			   ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackQtExport.h
+               ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackStrayMarkersQtWidget.h
+               ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackQtExport.h
                mtsAtracsysFusionTrackToolQtWidget.cpp
-               ${SAW_INTUITIVE_RESEARCH_KIT_QT_WRAP_CPP})
+               mtsAtracsysFusionTrackStrayMarkersQtWidget.cpp
+               ${SAW_ATRACSYS_FUSION_TRACK_QT_WRAP_CPP})
   set_property (TARGET sawAtracsysFusionTrackQt PROPERTY FOLDER "sawAtracsysFusionTrack")
   cisst_target_link_libraries (sawAtracsysFusionTrackQt ${REQUIRED_CISST_LIBRARIES})
 

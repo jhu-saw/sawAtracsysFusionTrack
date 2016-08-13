@@ -17,8 +17,8 @@ http://www.cisst.org/cisst/license.txt.
 */
 
 
-#ifndef _mtsAtracsysFusionTrackToolQtWidget_h
-#define _mtsAtracsysFusionTrackToolQtWidget_h
+#ifndef _mtsAtracsysFusionTrackStrayMarkersQtWidget_h
+#define _mtsAtracsysFusionTrackStrayMarkersQtWidget_h
 
 #include <cisstMultiTask/mtsComponent.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
@@ -31,14 +31,14 @@ http://www.cisst.org/cisst/license.txt.
 // Always include last
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackQtExport.h>
 
-class CISST_EXPORT mtsAtracsysFusionTrackToolQtWidget : public QWidget, public mtsComponent
+class CISST_EXPORT mtsAtracsysFusionTrackStrayMarkersQtWidget : public QWidget, public mtsComponent
 {
     Q_OBJECT;
     CMN_DECLARE_SERVICES(CMN_DYNAMIC_CREATION_ONEARG, CMN_LOG_ALLOW_DEFAULT);
 
 public:
-    mtsAtracsysFusionTrackToolQtWidget(const std::string & componentName, double periodInSeconds = 50.0 * cmn_ms);
-    ~mtsAtracsysFusionTrackToolQtWidget() {}
+    mtsAtracsysFusionTrackStrayMarkersQtWidget(const std::string & componentName, double periodInSeconds = 50.0 * cmn_ms);
+    ~mtsAtracsysFusionTrackStrayMarkersQtWidget() {}
 
     void Configure(const std::string & filename = "");
     void Startup(void);
@@ -56,25 +56,21 @@ private:
     int TimerPeriodInMilliseconds;
 
 protected:
-    struct ToolStruct {
-        mtsFunctionRead GetPositionCartesian;
-        mtsFunctionRead GetRegistrationError;
+    struct ControllerStruct {
+        mtsFunctionRead GetNumberOfThreeDFiducials;
+        mtsFunctionRead GetThreeDFiducialPosition;
         mtsFunctionRead GetPeriodStatistics;
-    } Tool;
+    } Controller;
 
 private:
     prmPositionCartesianGet PositionCartesian;
-    double RegistrationError;
-
-    vctQtWidgetFrameDoubleRead * QFRPositionCartesianWidget;
-    QLabel * QLValid;
-    QLabel * QLRegistrationError;
+    QLabel * QLNumberOfMarkers;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;
     mtsQtWidgetIntervalStatistics * QMIntervalStatistics;
 };
 
-CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrackToolQtWidget);
+CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrackStrayMarkersQtWidget);
 
-#endif // _mtsAtracsysFusionTrackToolQtWidget_h
+#endif // _mtsAtracsysFusionTrackStrayMarkersQtWidget_h

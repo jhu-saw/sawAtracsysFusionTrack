@@ -93,10 +93,9 @@ void mtsAtracsysFusionTrack::Construct(void)
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
-        // provided->AddCommandReadState(StateTable, IsTracking, "IsTracking");
         provided->AddCommandReadState(StateTable, NumberOfThreeDFiducials, "GetNumberOfThreeDFiducials");
         provided->AddCommandReadState(StateTable, ThreeDFiducialPosition, "GetThreeDFiducialPosition");
-
+        provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "GetPeriodStatistics");
     }
 }
 

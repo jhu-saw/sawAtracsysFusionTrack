@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -36,9 +36,9 @@ mtsAtracsysFusionTrackToolQtWidget::mtsAtracsysFusionTrackToolQtWidget(const std
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Tool");
     if (interfaceRequired) {
-        interfaceRequired->AddFunction("GetPositionCartesian", Arm.GetPositionCartesian);
-        interfaceRequired->AddFunction("GetRegistrationError", Arm.GetRegistrationError);
-        interfaceRequired->AddFunction("GetPeriodStatistics", Arm.GetPeriodStatistics);
+        interfaceRequired->AddFunction("GetPositionCartesian", Tool.GetPositionCartesian);
+        interfaceRequired->AddFunction("GetRegistrationError", Tool.GetRegistrationError);
+        interfaceRequired->AddFunction("GetPeriodStatistics", Tool.GetPeriodStatistics);
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -51,7 +51,7 @@ void mtsAtracsysFusionTrackToolQtWidget::Configure(const std::string &filename)
 
 void mtsAtracsysFusionTrackToolQtWidget::Startup(void)
 {
-    CMN_LOG_CLASS_INIT_VERBOSE << "mtsIntuitiveDaVinciManipulatorQtWidget::Startup" << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "mtsAtracsysFusionTrackToolQtWidget::Startup" << std::endl;
     if (!parent()) {
         show();
     }
@@ -60,7 +60,7 @@ void mtsAtracsysFusionTrackToolQtWidget::Startup(void)
 void mtsAtracsysFusionTrackToolQtWidget::Cleanup(void)
 {
     this->hide();
-    CMN_LOG_CLASS_INIT_VERBOSE << "mtsIntuitiveDaVinciManipulatorQtWidget::Cleanup" << std::endl;
+    CMN_LOG_CLASS_INIT_VERBOSE << "mtsAtracsysFusionTrackToolQtWidget::Cleanup" << std::endl;
 }
 
 void mtsAtracsysFusionTrackToolQtWidget::closeEvent(QCloseEvent * event)
@@ -84,9 +84,9 @@ void mtsAtracsysFusionTrackToolQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(eve
     }
 
     mtsExecutionResult executionResult;
-    executionResult = Arm.GetPositionCartesian(PositionCartesian);
+    executionResult = Tool.GetPositionCartesian(PositionCartesian);
     if (!executionResult) {
-        CMN_LOG_CLASS_RUN_ERROR << "Manipulator.GetPositionCartesian failed, \""
+        CMN_LOG_CLASS_RUN_ERROR << "Tool.GetPositionCartesian failed, \""
                                 << executionResult << "\"" << std::endl;
     }
     else {
@@ -94,15 +94,15 @@ void mtsAtracsysFusionTrackToolQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(eve
         QLValid->setNum(PositionCartesian.Valid());
     }
 
-    executionResult = Arm.GetRegistrationError(RegistrationError);
+    executionResult = Tool.GetRegistrationError(RegistrationError);
     if (!executionResult) {
-        CMN_LOG_CLASS_RUN_ERROR << "Manipulator.GetRegistrationError failed, \""
+        CMN_LOG_CLASS_RUN_ERROR << "Tool.GetRegistrationError failed, \""
                                 << executionResult << "\"" << std::endl;
     }
     else {
         QLRegistrationError->setNum(RegistrationError);
     }
-    Arm.GetPeriodStatistics(IntervalStatistics);
+    Tool.GetPeriodStatistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
 }
 
