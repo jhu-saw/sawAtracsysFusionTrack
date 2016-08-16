@@ -109,8 +109,10 @@ if (cisst_FOUND_AS_REQUIRED)
     target_link_libraries (sawAtracsysFusionTrack ${atracsys_LIBRARIES})
 
     # add Qt code
-    add_subdirectory (code/Qt)
-    set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${sawAtracsysFusionTrackQt_LIBRARIES})
+    if (CISST_HAS_QT)
+      add_subdirectory (code/Qt)
+      set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${sawAtracsysFusionTrackQt_LIBRARIES})
+    endif (CISST_HAS_QT)
 
     set (sawAtracsysFusionTrack_CMAKE_CONFIG_FILE
          "${sawAtracsysFusionTrack_CONFIG_FILE_DIR}/sawAtracsysFusionTrackConfig.cmake")
