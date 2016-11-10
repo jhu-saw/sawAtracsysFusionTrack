@@ -1,6 +1,10 @@
 # sawAtracsysFusionTrack
 SAW wrapper for Atracsys FusionTrack optical tracker
 
+# Network
+
+The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.
+
 # ROS/Catkin build tools
 
 This is by far the simplest solution to compile and run the examples on Linux.
