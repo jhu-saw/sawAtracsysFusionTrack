@@ -28,7 +28,7 @@ if (cisst_FOUND_AS_REQUIRED)
   include (${CISST_USE_FILE})
 
   if (NOT CISST_HAS_JSON)
-    message( FATAL_ERROR "sawAtracsysFusionTrack requires cisst to be built with JSON" )
+    message (FATAL_ERROR "sawAtracsysFusionTrack requires cisst to be built with JSON")
   endif ()
 
   # catkin/ROS paths
@@ -100,7 +100,7 @@ if (cisst_FOUND_AS_REQUIRED)
     include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
     set (sawAtracsysFusionTrack_HEADER_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack")
 
-    add_library (sawAtracsysFusionTrack
+    add_library (sawAtracsysFusionTrack ${IS_SHARED}
                  ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackExport.h
                  code/mtsAtracsysFusionTrack.cpp
                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
@@ -129,6 +129,7 @@ if (cisst_FOUND_AS_REQUIRED)
     # Install target for headers and library
     install (DIRECTORY
              "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack"
+             "${sawAtracsysFusionTrack_BINARY_DIR}/include/sawAtracsysFusionTrack"
              DESTINATION include
              PATTERN .svn EXCLUDE)
 
@@ -141,7 +142,7 @@ if (cisst_FOUND_AS_REQUIRED)
              DESTINATION "${CISST_CMAKE_INSTALL_SUFFIX}/saw")
 
   else (atracsys_FOUND)
-    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires the Atracsys SDK.  Please set atracsys_DIR using CMake, e.g. ccmake ${CMAKE_CURRENT_BINARY_DIR} or cmake-gui ${CMAKE_CURRENT_BINARY_DIR}")
+    message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires the Atracsys SDK.  Please set atracsys_DIR using CMake, e.g. ccmake ${CMAKE_CURRENT_BINARY_DIR}")
   endif (atracsys_FOUND)
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
