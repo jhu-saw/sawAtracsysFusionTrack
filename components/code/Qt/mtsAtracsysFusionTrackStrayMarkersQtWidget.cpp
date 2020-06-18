@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -22,6 +22,7 @@ http://www.cisst.org/cisst/license.txt.
 // Qt include
 #include <QString>
 #include <QtGui>
+#include <QMessageBox>
 
 // cisst
 #include <cisstMultiTask/mtsInterfaceRequired.h>

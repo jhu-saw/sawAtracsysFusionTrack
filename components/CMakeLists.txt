@@ -55,20 +55,20 @@ if (cisst_FOUND_AS_REQUIRED)
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_path (atracsys_DIR
                NAMES "ftkInterface.h"
-               PATH_SUFFIXES "src/include")
-    if (EXISTS "${atracsys_DIR}/src/include/ftkInterface.h")
+               PATH_SUFFIXES "src/include" "include")
+    if (EXISTS "${atracsys_DIR}/src/include/ftkInterface.h" OR EXISTS "${atracsys_DIR}/include/ftkInterface.h")
       set (atracsys_FOUND 1)
-      include_directories (${atracsys_DIR}/src/include)
+      include_directories (${atracsys_DIR}/src/include ${atracsys_DIR}/include)
       # libraries
       link_directories (${atracsys_DIR}/bin)
       set (atracsys_LIBRARIES pthread rt fusionTrack64 device64)
       # copy the binary provided for fusionTrack in cisst/saw library directory
       find_library (atracsys_LIBRARY_fusionTrack
                     NAMES fusionTrack64
-                    PATHS ${atracsys_DIR}/bin)
+                    PATHS ${atracsys_DIR}/bin ${atracsys_DIR}/lib)
       find_library (atracsys_LIBRARY_device
                     NAMES device64
-                    PATHS ${atracsys_DIR}/bin)
+                    PATHS ${atracsys_DIR}/bin ${atracsys_DIR}/lib)
       file (MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
       file (COPY ${atracsys_LIBRARY_fusionTrack} ${atracsys_LIBRARY_device}
             DESTINATION ${LIBRARY_OUTPUT_PATH})
@@ -98,6 +98,8 @@ if (cisst_FOUND_AS_REQUIRED)
                     "${sawAtracsysFusionTrack_BINARY_DIR}/include/sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h")
 
     include_directories (${sawAtracsysFusionTrack_INCLUDE_DIR})
+    link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
+
     set (sawAtracsysFusionTrack_HEADER_DIR "${sawAtracsysFusionTrack_SOURCE_DIR}/include/sawAtracsysFusionTrack")
 
     add_library (sawAtracsysFusionTrack ${IS_SHARED}

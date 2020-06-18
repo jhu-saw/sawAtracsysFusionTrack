@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -57,12 +57,12 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     /*! Configure the device.  If the method is called without a file
       name (or an empty string), this method initializes the hardware.
-      Users will have to call the AddToolInit later to add tools.  If
-      a file name is provided, the methods assumes it corresponds to a
+      Users will have to call the AddTool later to add tools.  If a
+      file name is provided, the methods assumes it corresponds to a
       JSON file containing an array of "tools", each of them being
-      defined by a "name" and an "ini-file".  The path for the ini
-      file can be either absolute or relative to the application's
-      working directory. */
+      defined by a "name" and an "ini-file" or "json-file".  The path
+      for the ini/json geometry file can be either absolute or
+      relative to the application's working directory. */
     void Configure(const std::string & filename = "");
 
     void Startup(void);
@@ -71,7 +71,17 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     void Cleanup(void);
 
-    bool AddToolIni(const std::string & toolName, const std::string & fileName);
+    /*! Create a tool using the tool geometry file.  By default,
+      Atracsys provides .ini files but we also support .json. */
+    bool AddTool(const std::string & toolName,
+                 const std::string & fileName,
+                 const bool isJson);
+
+    /*! For backward compatibility */
+    inline bool AddToolIni(const std::string & toolName,
+                           const std::string & fileName) {
+        return AddTool(toolName, fileName, false);
+    }
 
     inline size_t GetNumberOfTools(void) const {
         return Tools.size();

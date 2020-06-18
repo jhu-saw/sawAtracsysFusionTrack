@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -17,14 +17,90 @@ http://www.cisst.org/cisst/license.txt.
 */
 
 #include <ftkInterface.h>
-#include <geometryHelper.hpp> // I would like to get rid of this and use only ftk functions + remove atracsys_DIR/bin from include directories
-
 #include <cisstMultiTask/mtsInterfaceProvided.h>
-
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
+
+bool LoadGeometryJSON(const std::string & filename,
+                      ftkGeometry & geometry)
+{
+    std::ifstream jsonStream;
+    jsonStream.open(filename.c_str());
+
+    Json::Reader jsonReader;
+    Json::Value jsonConfig;
+    if (!jsonReader.parse(jsonStream, jsonConfig)) {
+        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: failed to parse configuration" << std::endl
+                           << jsonReader.getFormattedErrorMessages();
+        return false;
+    }
+
+    // version?
+    geometry.version = 0u;
+    Json::Value jsonValue;
+
+    // id
+    jsonValue = jsonConfig["id"];
+    if (!jsonValue.empty()) {
+        geometry.geometryId = jsonValue.asUInt();
+    } else {
+        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: missing \"id\" in \"" << std::endl
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+
+    // id
+    jsonValue = jsonConfig["count"];
+    if (!jsonValue.empty()) {
+        geometry.pointsCount = jsonValue.asUInt();
+    } else {
+        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: missing \"count\" in \"" << std::endl
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+
+    // fiducials
+    const Json::Value jsonFiducials = jsonConfig["fiducials"];
+    // check size
+    if (jsonFiducials.size() != geometry.pointsCount) {
+        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: found " << jsonFiducials.size()
+                           << " fiducial defined but expected " << geometry.pointsCount
+                           << " based on \"count\" defined in \"" << std::endl
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+    // load fiducial
+    for (unsigned int index = 0; index < jsonFiducials.size(); ++index) {
+        jsonValue = jsonFiducials[index];
+        if (jsonValue["x"].empty()) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryJSON: \"x\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].x = jsonValue["x"].asDouble();
+        }
+        if (jsonValue["y"].empty()) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryJSON: \"y\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].y = jsonValue["y"].asDouble();
+        }
+        if (jsonValue["z"].empty()) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryJSON: \"z\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].z = jsonValue["z"].asDouble();
+        }
+    }
+    return true;
+}
 
 class mtsAtracsysFusionTrackTool
 {
@@ -121,7 +197,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         if (error != FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
                                      << this->GetName() << ")" << std::endl;
-            ftkClose(Internals->Library);
+            ftkClose(&Internals->Library);
         }
 
         if (Internals->Device != 0LL) {
@@ -131,7 +207,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     if (Internals->Device == 0LL) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected ("
                                  << this->GetName() << ")" << std::endl;
-        ftkClose(Internals->Library);
+        ftkClose(&Internals->Library);
         return;
     }
 
@@ -155,26 +231,53 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     // allows the use of relative paths for ini files
     cmnPath configPath(cmnPath::GetWorkingDirectory());
 
+    // add FTK path too
+    ftkBuffer buffer;
+    if ((ftkGetData(Internals->Library, Internals->Device,
+                    FTK_OPT_DATA_DIR, &buffer ) == FTK_OK) && (buffer.size > 0)) {
+        std::string ftkPath(reinterpret_cast<char*>(buffer.data));
+        configPath.Add(ftkPath);
+    }
 
+    // now, find the tool geometry, either as ini or json file
     const Json::Value jsonTools = jsonConfig["tools"];
     for (unsigned int index = 0; index < jsonTools.size(); ++index) {
         jsonValue = jsonTools[index];
-
         std::string toolName = jsonValue["name"].asString();
 
         // make sure toolName is valid
+        bool isJson = false;
+        std::string toolFile = "undefined";
         if (toolName == "") {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << std::endl;
         } else {
-            std::string iniFile = jsonValue["ini-file"].asString();
-            std::string fullname = configPath.Find(iniFile);
+            const Json::Value iniTool = jsonValue["ini-file"];
+            const Json::Value jsonTool = jsonValue["json-file"];
+            if (iniTool.empty() && jsonTool.empty()) {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
+                                         << toolName << "\" in configuration file \""
+                                         << filename << "\", neither was found" << std::endl;
+            } else if (!iniTool.empty() && !jsonTool.empty()) {
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
+                                         << toolName << "\" in configuration file \""
+                                         << filename << "\", both were found" << std::endl;
+            } else if (!iniTool.empty()) {
+                isJson = false;
+                toolFile = iniTool.asString();
+            } else {
+                isJson = true;
+                toolFile = jsonTool.asString();
+            }
+
+            std::string fullname = configPath.Find(toolFile);
             // make sure ini file is valid
             if (cmnPath::Exists(fullname)) {
-                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: called AddToolIni with toolName: " << toolName << " and ini file location: " << iniFile << std::endl;
-                AddToolIni(toolName, fullname);
+                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: calling AddTool with tool name: " << toolName << " and configuration file: " << filename << std::endl;
+                AddTool(toolName, fullname, isJson);
             } else {
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: ini file " << iniFile
-                                         << " not found in path (" << configPath << ")" << std::endl;
+                CMN_LOG_CLASS_INIT_ERROR << "Configure: configuration file \"" << toolFile
+                                         << "\" for tool \"" << toolName
+                                         << "\" not found in path (" << configPath << ")" << std::endl;
             }
         }
     }
@@ -303,51 +406,64 @@ void mtsAtracsysFusionTrack::Run(void)
 
 void mtsAtracsysFusionTrack::Cleanup(void)
 {
-    ftkClose(Internals->Library);
+    ftkClose(&Internals->Library);
 }
 
 
-bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std::string & fileName)
+bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
+                                     const std::string & fileName,
+                                     const bool isJson)
 {
 
     // check if this tool already exists
     mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);
     if (tool) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->Name << " already exists" << std::endl;
         return false;
     }
 
     // make sure we can find and load this tool ini file
-    ftkError error;
     ftkGeometry geometry;
-    switch (loadGeometry(Internals->Library, Internals->Device, fileName, geometry)) {
-    case 1:
-        CMN_LOG_CLASS_INIT_VERBOSE << "AddToolIni: loaded " << fileName << " from installation directory"
-                                   << std::endl;
-    case 0:
-        error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
-        if (error != FTK_OK) {
-            CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: unable to set geometry for tool "
-                                     << fileName << " (" << this->GetName() << ")" << std::endl;
+
+    if (isJson) {
+        if (LoadGeometryJSON(fileName, geometry)) {
+            std::cerr << "good" << std::endl;
+        } else {
+            std::cerr << "bad" << std::endl;
+        }
+    } else {
+        std::cerr << CMN_LOG_DETAILS << " need to implement an ini parser -- on linux/Ubuntu we could use inih (included in distribution" << std::endl;
+#if 0
+        switch (loadGeometry(Internals->Library, Internals->Device, fileName, geometry)) {
+        case 1:
+            CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loaded " << fileName << " from installation directory"
+                                       << std::endl;
+        case 0:
+            error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
+            if (error != FTK_OK) {
+                CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
+                                         << fileName << " (" << this->GetName() << ")" << std::endl;
+                return false;
+            }
+            else {
+                CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
+                                         << fileName << " (" << this->GetName() << ") but received FTK_OK"
+                                         << std::endl;
+            }
+            break;
+        default:
+            CMN_LOG_CLASS_INIT_ERROR << "AddTool: error, cannot load geometry file "
+                                     << fileName << std::endl;
             return false;
         }
-        else {
-            CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: unable to set geometry for tool "
-                                     << fileName << " (" << this->GetName() << ") but received FTK_OK"
-                                     << std::endl;
-        }
-        break;
-    default:
-        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: error, cannot load geometry file "
-                                 << fileName << std::endl;
-        return false;
+#endif
     }
 
     // make sure there is no such geometry Id yet
     const mtsAtracsysFusionTrackInternals::GeometryIdToToolMap::const_iterator
         toolIterator = Internals->GeometryIdToTool.find(geometry.geometryId);
     if (toolIterator != Internals->GeometryIdToTool.end()) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: error, found an existing tool with the same Id "
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: error, found an existing tool with the same Id "
                                  << geometry.geometryId << " for " << fileName << std::endl;
         return false;
     }
@@ -358,7 +474,7 @@ bool mtsAtracsysFusionTrack::AddToolIni(const std::string & toolName, const std:
     // create an interface for tool
     tool->Interface = AddInterfaceProvided(toolName);
     if (!tool->Interface) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddToolIni: " << tool->Name << " already exists" << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->Name << " already exists" << std::endl;
         delete tool;
         return false;
     }
