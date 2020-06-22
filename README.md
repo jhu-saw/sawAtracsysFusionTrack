@@ -33,3 +33,12 @@ rosrun atracsys_ros atracsys_json -j config003.json
 # Windows
 
 todo
+
+# `.ini` or `.json` file
+
+By default, Atracsys seems to be using `.ini` file for the tool geometry definition.  But curiously, the SDK doesn't provide a standard function to load a `.ini` file.  SDKs up to version 3 come with a method in the `samples` directory but one would have to manualy copy the code in the library or wrapper.  Instead, this component provided two solutions:
+* Port the geometry files to JSON.  This is a fairly simple task considering that the geometry files are short text files.
+* Use a "native" `.ini` parsers.  On Linux/Ubuntu, just install the `iniparser` development libraries using:
+   ```sh
+   sudo apt install libiniparser-dev
+   ```

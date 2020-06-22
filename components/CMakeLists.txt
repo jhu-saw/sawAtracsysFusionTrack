@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -27,8 +27,24 @@ if (cisst_FOUND_AS_REQUIRED)
   # load cisst configuration
   include (${CISST_USE_FILE})
 
+  # we need json for general config file and added support for tool geometry to replace .ini
   if (NOT CISST_HAS_JSON)
     message (FATAL_ERROR "sawAtracsysFusionTrack requires cisst to be built with JSON")
+  endif ()
+
+  # still looking for .ini parser
+  if (WIN32)
+    # Windows, not sure if there's a system provided library
+  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    # Linux, look for inih
+    find_path (INI_PARSER_INCLUDE_DIR iniparser/iniparser.h)
+    find_library (INI_PARSER_LIBRARIES NAMES iniparser)
+    if (INI_PARSER_INCLUDE_DIR AND INI_PARSER_LIBRARIES)
+      set (INI_PARSER_FOUND 1)
+      mark_as_advanced (INI_PARSER_INCLUDE_DIR INI_PARSER_LIBRARIES) 
+    else ()
+      set (INI_PARSER_FOUND 0)
+    endif ()
   endif ()
 
   # catkin/ROS paths
@@ -85,8 +101,7 @@ if (cisst_FOUND_AS_REQUIRED)
          "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
          "${sawAtracsysFusionTrack_BINARY_DIR}/include")
     set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}" "${atracsys_DIR}/lib")
-    set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
-
+    set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES} ${INI_PARSER_LIBRARIES})
     # Set the version number
     set (sawAtracsysFusionTrack_VERSION_MAJOR "1")
     set (sawAtracsysFusionTrack_VERSION_MINOR "1")

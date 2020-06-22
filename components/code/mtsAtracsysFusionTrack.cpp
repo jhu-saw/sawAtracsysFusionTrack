@@ -19,8 +19,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <ftkInterface.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstMultiTask/mtsInterfaceProvided.h>
+#include <sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
-
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
 
@@ -33,7 +33,8 @@ bool LoadGeometryJSON(const std::string & filename,
     Json::Reader jsonReader;
     Json::Value jsonConfig;
     if (!jsonReader.parse(jsonStream, jsonConfig)) {
-        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: failed to parse configuration" << std::endl
+        CMN_LOG_INIT_ERROR << "LoadGeometryJSON: failed to parse configuration \""
+                           << filename << "\"" << std::endl
                            << jsonReader.getFormattedErrorMessages();
         return false;
     }
@@ -99,13 +100,98 @@ bool LoadGeometryJSON(const std::string & filename,
         } else {
             geometry.positions[index].z = jsonValue["z"].asDouble();
         }
-        std::cout << "Loaded fiducial " << index << " ("
-             << geometry.positions[index].x << ", "
-             << geometry.positions[index].y << ", "
-             << geometry.positions[index].z << ")" << std::endl;
     }
     return true;
 }
+
+#if sawAtracsysFusionTrack_USES_INI_PARSER
+#include <iniparser/iniparser.h>
+#endif
+
+bool LoadGeometryINI(const std::string & filename,
+                     ftkGeometry & geometry)
+{
+#if sawAtracsysFusionTrack_USES_INI_PARSER
+    dictionary * ini = iniparser_load(filename.c_str());
+    if (ini == 0) {
+        CMN_LOG_INIT_ERROR << "LoadGeometryINI: failed to parse configuration \""
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+
+    // parser data
+    int i;
+    double d;
+
+    // version?
+    geometry.version = 0u;
+
+    // id
+    i = iniparser_getint(ini, "geometry:id", -1);
+    if (i == -1) {
+        CMN_LOG_INIT_ERROR << "LoadGeometryINI: missing \"id\" in \"" << std::endl
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+    geometry.geometryId = i;
+
+    // count
+    i = iniparser_getint(ini, "geometry:count", -1);
+    if (i == -1) {
+        CMN_LOG_INIT_ERROR << "LoadGeometryINI: missing \"count\" in \"" << std::endl
+                           << filename << "\"" << std::endl;
+        return false;
+    }
+    geometry.pointsCount = i;
+
+    // fiducials
+    const double notFound = -9.87654321;
+    char entry[13]; // for fiducialN:x\0
+    for (unsigned int index = 0; index < geometry.pointsCount; ++index) {
+        // x
+        sprintf(entry, "fiducial%u:x\0", index);
+        d = iniparser_getdouble(ini, entry, notFound);
+        if (d == notFound) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"x\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].x = d;
+        }
+        // y
+        sprintf(entry, "fiducial%u:y\0", index);
+        d = iniparser_getdouble(ini, entry, notFound);
+        if (d == notFound) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"y\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].y = d;
+        }
+        // z
+        sprintf(entry, "fiducial%u:z\0", index);
+        d = iniparser_getdouble(ini, entry, notFound);
+        if (d == notFound) {
+            CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"z\" is missing for fiducial[" << index
+                               << "] in \"" << std::endl
+                               << filename << "\"" << std::endl;
+            return false;
+        } else {
+            geometry.positions[index].z = d;
+        }
+    }
+
+    iniparser_freedict(ini);
+
+    return true;
+#else
+    std::cerr << CMN_LOG_DETAILS << " sorry, this code was built without a .ini parser for tool geometry.  Convert your geometry file to JSON or re-compile this code with inih (a simple ini parsers)." << std::endl;
+    return false;
+#endif
+}
+
 
 class mtsAtracsysFusionTrackTool
 {
@@ -240,7 +326,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
-    // allows the use of relative paths for ini files
+    // allows the use of relative paths for geometry files
     cmnPath configPath(cmnPath::GetWorkingDirectory());
 
     // add FTK path too
@@ -322,8 +408,6 @@ void mtsAtracsysFusionTrack::Run(void)
         }
     }
 
-    std::cerr << "getLastFrame was ok!" << std::endl;
-    
     // check results of last frame
     switch (Internals->Frame->markersStat) {
     case QS_WAR_SKIPPED:
@@ -347,8 +431,6 @@ void mtsAtracsysFusionTrack::Run(void)
         count = Internals->NumberOfMarkers;
     }
 
-    std::cerr << "seeing # markers: " << count << std::endl;
-    
     // initialize all tools
     const ToolsType::iterator end = Tools.end();
     ToolsType::iterator iter;
@@ -360,7 +442,6 @@ void mtsAtracsysFusionTrack::Run(void)
     // for each marker, get the data and populate corresponding tool
     for (size_t index = 0; index < count; ++index) {
         ftkMarker * currentMarker = &(Internals->Markers[index]);
-        std::cerr << "-------- seeing marker " << currentMarker->geometryId << std::endl;
 
         // find the appropriate tool
         if (Internals->GeometryIdToTool.find(currentMarker->geometryId) == Internals->GeometryIdToTool.end()) {
@@ -454,50 +535,40 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
 
     // make sure we can find and load this tool ini file
     ftkGeometry geometry;
-
+    bool parse;
     if (isJson) {
-        if (LoadGeometryJSON(fileName, geometry)) {
-            std::cerr << "good" << std::endl;
-        } else {
-            std::cerr << "bad" << std::endl;
-        }
-        ftkError error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
-        if (error != FTK_OK) {
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
-                                     << fileName << " (" << this->GetName() << ")" << std::endl;
-            return false;
-        }
-        else {
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
-                                     << fileName << " (" << this->GetName() << ") but received FTK_OK"
-                                     << std::endl;
+        parse = LoadGeometryJSON(fileName, geometry);
+    } else {
+        parse = LoadGeometryINI(fileName, geometry);
+    }
+
+    if (parse) {
+        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loaded geometry from file \""
+                                   << fileName << "\" for tool \"" << toolName << "\"" << std::endl;
+        for (size_t index = 0; index < geometry.pointsCount; ++index) {
+            CMN_LOG_CLASS_INIT_VERBOSE << "Marker[" << index << "] = ("
+                                       << geometry.positions[index].x << ", "
+                                       << geometry.positions[index].y << ", "
+                                       << geometry.positions[index].z << ")" << std::endl;
         }
     } else {
-        std::cerr << CMN_LOG_DETAILS << " need to implement an ini parser -- on linux/Ubuntu we could use inih (included in distribution" << std::endl;
-#if 0
-        switch (loadGeometry(Internals->Library, Internals->Device, fileName, geometry)) {
-        case 1:
-            CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: loaded " << fileName << " from installation directory"
-                                       << std::endl;
-        case 0:
-            error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
-            if (error != FTK_OK) {
-                CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
-                                         << fileName << " (" << this->GetName() << ")" << std::endl;
-                return false;
-            }
-            else {
-                CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool "
-                                         << fileName << " (" << this->GetName() << ") but received FTK_OK"
-                                         << std::endl;
-            }
-            break;
-        default:
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: error, cannot load geometry file "
-                                     << fileName << std::endl;
-            return false;
-        }
-#endif
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to parse geometry file \""
+                                 << fileName << "\" for tool \"" << toolName << "\"" << std::endl;
+        return false;
+    }
+
+    ftkError error = ftkSetGeometry(Internals->Library, Internals->Device, &geometry);
+    if (error != FTK_OK) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
+                                 << "\" using geometry file \"" << fileName
+                                 << "\" (" << this->GetName() << ")" << std::endl;
+        return false;
+    }
+    else {
+        CMN_LOG_CLASS_INIT_VERBOSE << "AddTool: set geometry for tool \"" << toolName
+                                   << "\" using geometry file \"" << fileName
+                                   << "\" successful (" << this->GetName() << ")"
+                                   << std::endl;
     }
 
     // make sure there is no such geometry Id yet
@@ -505,7 +576,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
         toolIterator = Internals->GeometryIdToTool.find(geometry.geometryId);
     if (toolIterator != Internals->GeometryIdToTool.end()) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: error, found an existing tool with the same Id "
-                                 << geometry.geometryId << " for " << fileName << std::endl;
+                                 << geometry.geometryId << " for tool \"" << toolName << "\"" << std::endl;
         return false;
     }
 
