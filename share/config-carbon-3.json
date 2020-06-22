@@ -4,7 +4,7 @@
     [
         {
             "name": "Carbon-3",
-            "json-file": "geometry-carbon-3.json"
+            "ini-file": "geometry-carbon-3.ini"
         }
     ]
 }
