@@ -37,9 +37,9 @@ mtsAtracsysFusionTrackToolQtWidget::mtsAtracsysFusionTrackToolQtWidget(const std
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Tool");
     if (interfaceRequired) {
-        interfaceRequired->AddFunction("GetPositionCartesian", Tool.GetPositionCartesian);
-        interfaceRequired->AddFunction("GetRegistrationError", Tool.GetRegistrationError);
-        interfaceRequired->AddFunction("GetPeriodStatistics", Tool.GetPeriodStatistics);
+        interfaceRequired->AddFunction("measured_cp", Tool.measured_cp);
+        interfaceRequired->AddFunction("registration_error", Tool.GetRegistrationError);
+        interfaceRequired->AddFunction("period_statistics", Tool.period_statistics);
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -85,9 +85,9 @@ void mtsAtracsysFusionTrackToolQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(eve
     }
 
     mtsExecutionResult executionResult;
-    executionResult = Tool.GetPositionCartesian(PositionCartesian);
+    executionResult = Tool.measured_cp(PositionCartesian);
     if (!executionResult) {
-        CMN_LOG_CLASS_RUN_ERROR << "Tool.GetPositionCartesian failed, \""
+        CMN_LOG_CLASS_RUN_ERROR << "Tool.measured_cp failed, \""
                                 << executionResult << "\"" << std::endl;
     }
     else {
@@ -103,7 +103,7 @@ void mtsAtracsysFusionTrackToolQtWidget::timerEvent(QTimerEvent * CMN_UNUSED(eve
     else {
         QLRegistrationError->setNum(RegistrationError);
     }
-    Tool.GetPeriodStatistics(IntervalStatistics);
+    Tool.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
 }
 

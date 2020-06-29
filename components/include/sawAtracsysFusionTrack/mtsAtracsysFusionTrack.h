@@ -45,12 +45,12 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
  public:
     inline mtsAtracsysFusionTrack(const std::string & componentName):
         mtsTaskContinuous(componentName, 100) {
-        Construct();
+        Init();
     }
 
     inline mtsAtracsysFusionTrack(const mtsTaskContinuousConstructorArg & arg):
         mtsTaskContinuous(arg) {
-        Construct();
+        Init();
     }
 
     ~mtsAtracsysFusionTrack(void) {};
@@ -92,7 +92,7 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 protected:
 
     /*! Code called by all constructors. */
-    void Construct(void);
+    void Init(void);
 
     mtsAtracsysFusionTrackInternals * Internals;
     typedef cmnNamedMap<mtsAtracsysFusionTrackTool> ToolsType;

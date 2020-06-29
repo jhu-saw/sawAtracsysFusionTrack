@@ -43,9 +43,9 @@ protected:
 	} Collector;
 
 	struct ToolStruct {
-		mtsFunctionRead GetPositionCartesian;
+		mtsFunctionRead measured_cp;
 		mtsFunctionRead GetRegistrationError;
-		mtsFunctionRead GetPeriodStatistics;
+		mtsFunctionRead period_statistics;
 	};
 
 	struct FiducialStruct {

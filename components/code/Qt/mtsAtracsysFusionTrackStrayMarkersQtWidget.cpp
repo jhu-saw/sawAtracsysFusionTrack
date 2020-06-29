@@ -39,7 +39,7 @@ mtsAtracsysFusionTrackStrayMarkersQtWidget::mtsAtracsysFusionTrackStrayMarkersQt
     if (interfaceRequired) {
         interfaceRequired->AddFunction("GetNumberOfThreeDFiducials", Controller.GetNumberOfThreeDFiducials);
         interfaceRequired->AddFunction("GetThreeDFiducialPosition", Controller.GetThreeDFiducialPosition);
-        interfaceRequired->AddFunction("GetPeriodStatistics", Controller.GetPeriodStatistics);
+        interfaceRequired->AddFunction("period_statistics", Controller.period_statistics);
     }
     setupUi();
     startTimer(TimerPeriodInMilliseconds); // ms
@@ -95,7 +95,7 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::timerEvent(QTimerEvent * CMN_UN
         QLNumberOfMarkers->setNum(numberOfMarkers);
     }
 
-    Controller.GetPeriodStatistics(IntervalStatistics);
+    Controller.period_statistics(IntervalStatistics);
     QMIntervalStatistics->SetValue(IntervalStatistics);
 }
 

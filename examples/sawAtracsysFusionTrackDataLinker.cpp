@@ -45,9 +45,9 @@ void sawAtracsysFusionTrackDataLinker::AddToolInterface(const std::string & tool
 {
 	mtsInterfaceRequired * required = AddInterfaceRequired(toolName, MTS_OPTIONAL);
     if (required) {
-		required->AddFunction("GetPositionCartesian", functionSet.GetPositionCartesian);
+		required->AddFunction("measured_cp", functionSet.measured_cp);
 		required->AddFunction("GetRegistrationError", functionSet.GetRegistrationError);
-		required->AddFunction("GetPeriodStatistics", functionSet.GetPeriodStatistics);
+		required->AddFunction("period_statistics", functionSet.period_statistics);
     }
 }
 
@@ -61,10 +61,10 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 	ProcessQueuedEvents();
     ProcessQueuedCommands();
 
-	Tool.GetPositionCartesian(prmTool);
+	Tool.measured_cp(prmTool);
 	
 	if (!prmTool.Valid()) {
-		CMN_LOG_CLASS_RUN_ERROR << "Tool.GetPositionCartesian failed"
+		CMN_LOG_CLASS_RUN_ERROR << "Tool.measured_cp failed"
 			<< std::endl;
 	}
 	else {
@@ -72,10 +72,10 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 		std::cout << "Tool from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
 	}
 
-	Arm.GetPositionCartesian(prmTool);
+	Arm.measured_cp(prmTool);
 	
 	if (!prmTool.Valid()) {
-		CMN_LOG_CLASS_RUN_ERROR << "Arm.GetPositionCartesian failed"
+		CMN_LOG_CLASS_RUN_ERROR << "Arm.measured_cp failed"
 			<< std::endl;
 	}
 	else {
@@ -83,10 +83,10 @@ void sawAtracsysFusionTrackDataLinker::Run(void){
 		std::cout << "Arm from Atracsys Fusion Tracker (Orientation): " << std::endl << prmTool.Position().Rotation() << std::endl;
 	}
 
-	Ref.GetPositionCartesian(prmTool);
+	Ref.measured_cp(prmTool);
 	
 	if (!prmTool.Valid()) {
-		CMN_LOG_CLASS_RUN_ERROR << "Ref.GetPositionCartesian failed"
+		CMN_LOG_CLASS_RUN_ERROR << "Ref.measured_cp failed"
 			<< std::endl;
 	}
 	else {

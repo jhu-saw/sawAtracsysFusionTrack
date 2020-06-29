@@ -149,7 +149,7 @@ bool LoadGeometryINI(const std::string & filename,
     char entry[13]; // for fiducialN:x\0
     for (unsigned int index = 0; index < geometry.pointsCount; ++index) {
         // x
-        sprintf(entry, "fiducial%u:x\0", index);
+        sprintf(entry, "fiducial%u:x", index);
         d = iniparser_getdouble(ini, entry, notFound);
         if (d == notFound) {
             CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"x\" is missing for fiducial[" << index
@@ -160,7 +160,7 @@ bool LoadGeometryINI(const std::string & filename,
             geometry.positions[index].x = d;
         }
         // y
-        sprintf(entry, "fiducial%u:y\0", index);
+        sprintf(entry, "fiducial%u:y", index);
         d = iniparser_getdouble(ini, entry, notFound);
         if (d == notFound) {
             CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"y\" is missing for fiducial[" << index
@@ -171,7 +171,7 @@ bool LoadGeometryINI(const std::string & filename,
             geometry.positions[index].y = d;
         }
         // z
-        sprintf(entry, "fiducial%u:z\0", index);
+        sprintf(entry, "fiducial%u:z", index);
         d = iniparser_getdouble(ini, entry, notFound);
         if (d == notFound) {
             CMN_LOG_INIT_ERROR << "LoadGeometryINI: \"z\" is missing for fiducial[" << index
@@ -197,18 +197,18 @@ class mtsAtracsysFusionTrackTool
 {
 public:
     mtsAtracsysFusionTrackTool(const std::string & name) :
-        Name(name),
-        Interface(0),
-        StateTable(500, name)
+        m_name(name),
+        m_interface(0),
+        m_state_table(500, name)
     {}
 
     ~mtsAtracsysFusionTrackTool(void) {}
 
-    std::string Name;
-    mtsInterfaceProvided * Interface;
-    prmPositionCartesianGet Position;
-    double RegistrationError;
-    mtsStateTable StateTable;
+    std::string m_name;
+    mtsInterfaceProvided * m_interface;
+    prmPositionCartesianGet m_measured_cp;
+    double m_registration_error;
+    mtsStateTable m_state_table;
 };
 
 class mtsAtracsysFusionTrackInternals
@@ -224,9 +224,9 @@ public:
         ftkError err(ftkSetFrameOptions(false, false, 16u, 16u, 100u, 16u,
                                         Frame));
         if (err != FTK_OK) {
-            std::cerr << "crap!!!" << std::endl;
+            CMN_LOG_INIT_ERROR << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions failed" << std::endl;
         } else {
-            std::cerr << "set frame query options went ok!" << std::endl;
+            CMN_LOG_INIT_VERBOSE << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions ok" << std::endl;
         }
 
         Markers = new ftkMarker[NumberOfMarkers];
@@ -249,7 +249,7 @@ public:
 };
 
 
-void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType type)
+void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType CMN_UNUSED(type))
 {
     uint64 * lastDevice = reinterpret_cast<uint64 *>(user);
     if (lastDevice) {
@@ -258,7 +258,7 @@ void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType 
 }
 
 
-void mtsAtracsysFusionTrack::Construct(void)
+void mtsAtracsysFusionTrack::Init(void)
 {
     Internals = new mtsAtracsysFusionTrackInternals();
 
@@ -269,7 +269,7 @@ void mtsAtracsysFusionTrack::Construct(void)
     if (provided) {
         provided->AddCommandReadState(StateTable, NumberOfStrayMarkers, "GetNumberOfThreeDFiducials");
         provided->AddCommandReadState(StateTable, StrayMarkers, "GetThreeDFiducialPosition");
-        provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "GetPeriodStatistics");
+        provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
     }
 }
 
@@ -435,8 +435,8 @@ void mtsAtracsysFusionTrack::Run(void)
     const ToolsType::iterator end = Tools.end();
     ToolsType::iterator iter;
     for (iter = Tools.begin(); iter != end; ++iter) {
-        iter->second->StateTable.Start();
-        iter->second->Position.SetValid(false);
+        iter->second->m_state_table.Start();
+        iter->second->m_measured_cp.SetValid(false);
     }
 
     // for each marker, get the data and populate corresponding tool
@@ -450,17 +450,17 @@ void mtsAtracsysFusionTrack::Run(void)
         }
         else {
             mtsAtracsysFusionTrackTool * tool = Internals->GeometryIdToTool.at(currentMarker->geometryId);
-            tool->Position.SetValid(true);
-            tool->Position.Position().Translation().Assign(currentMarker->translationMM[0],
-                                                           currentMarker->translationMM[1],
-                                                           currentMarker->translationMM[2]);
+            tool->m_measured_cp.SetValid(true);
+            tool->m_measured_cp.Position().Translation().Assign(currentMarker->translationMM[0],
+                                                                currentMarker->translationMM[1],
+                                                                currentMarker->translationMM[2]);
             for (size_t row = 0; row < 3; ++row) {
                 for (size_t col = 0; col < 3; ++col) {
-                    tool->Position.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
+                    tool->m_measured_cp.Position().Rotation().Element(row, col) = currentMarker->rotation[row][col];
                 }
             }
 
-            tool->RegistrationError = currentMarker->registrationErrorMM;
+            tool->m_registration_error = currentMarker->registrationErrorMM;
 
             /*
               printf("Marker:\n");
@@ -474,7 +474,7 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // finalize all tools
     for (iter = Tools.begin(); iter != end; ++iter) {
-        iter->second->StateTable.Advance();
+        iter->second->m_state_table.Advance();
     }
 
     // ---- 3D Fiducials, aka stray markers ---
@@ -529,7 +529,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     // check if this tool already exists
     mtsAtracsysFusionTrackTool * tool = Tools.GetItem(toolName);
     if (tool) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->Name << " already exists" << std::endl;
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->m_name << " already exists" << std::endl;
         return false;
     }
 
@@ -584,9 +584,9 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     tool = new mtsAtracsysFusionTrackTool(toolName);
 
     // create an interface for tool
-    tool->Interface = AddInterfaceProvided(toolName);
-    if (!tool->Interface) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->Name << " already exists" << std::endl;
+    tool->m_interface = AddInterfaceProvided(toolName);
+    if (!tool->m_interface) {
+        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->m_name << " already exists" << std::endl;
         delete tool;
         return false;
     }
@@ -596,15 +596,15 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     Internals->GeometryIdToTool[geometry.geometryId] = tool;
 
     // add data for this tool and populate tool interface
-    tool->StateTable.SetAutomaticAdvance(false);
-    this->AddStateTable(&(tool->StateTable));
-    tool->StateTable.AddData(tool->Position, "Position");
-    tool->StateTable.AddData(tool->RegistrationError, "RegistrationError");
-    tool->Interface->AddCommandReadState(tool->StateTable, tool->Position, "GetPositionCartesian");
-    tool->Interface->AddCommandReadState(tool->StateTable, tool->RegistrationError, "GetRegistrationError");
-    tool->Interface->AddCommandReadState(tool->StateTable,
-                                         tool->StateTable.PeriodStats,
-                                         "GetPeriodStatistics");
+    tool->m_state_table.SetAutomaticAdvance(false);
+    this->AddStateTable(&(tool->m_state_table));
+    tool->m_state_table.AddData(tool->m_measured_cp, "measured_cp");
+    tool->m_state_table.AddData(tool->m_registration_error, "registration_error");
+    tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_measured_cp, "measured_cp");
+    tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_registration_error, "registration_error");
+    tool->m_interface->AddCommandReadState(tool->m_state_table,
+                                           tool->m_state_table.PeriodStats,
+                                           "period_statistics");
     return true;
 }
 

@@ -97,7 +97,7 @@ print("Test 3")
 
 def GetPose():
 	f = Frame()
-	pose = pointerBody.GetPositionCartesian()
+	pose = pointerBody.measured_cp()
 	if pose.GetValid():  # if visible
 		f.FromVctFrm3(pose.Position())
 		f.IsValid = True
@@ -105,7 +105,7 @@ def GetPose():
 	return f
 #pointer 
 def GetTranslation():
-	pose = pointerBody.GetPositionCartesian()
+	pose = pointerBody.measured_cp()
 	if pose.GetValid():  # if visible
 		return np.copy(pose.Position().Translation())
 	else:
@@ -115,7 +115,7 @@ def GetPoseInRef():
 	r = GetReference()
 	f = Frame()
 	pointerInRef = Frame()
-	pose = pointerBody.GetPositionCartesian()
+	pose = pointerBody.measured_cp()
 	if pose.GetValid():  # if visible
 		f.FromVctFrm3(pose.Position())
 		pointerInRef = r.Inverse() * f;
@@ -136,7 +136,7 @@ def GetTranslationInRef():
 
 def GetReference():
 	f = Frame()
-	pose = referenceBody.GetPositionCartesian()
+	pose = referenceBody.measured_cp()
 	if pose.GetValid():  # if visible
 		f.FromVctFrm3(pose.Position())
 		f.IsValid = True
@@ -193,7 +193,7 @@ def PlotSamplePoints():
 
 	for i in range(0,numPoints):
 		time.sleep(0.05) #the updated rate is slow... maybe 30 fps.
-		pose = pointerBody.GetPositionCartesian()
+		pose = pointerBody.measured_cp()
 		if pose.GetValid():  # if visible
 			xv[i] = pose.Position().Translation()[0]
 			yv[i] = pose.Position().Translation()[1]
@@ -218,9 +218,9 @@ def PlotSamplePoints():
 
 def GetAllPoses():
     trTool = Frame()
-    trTool.FromVctFrm3(pointerBody.GetPositionCartesian().Position())
+    trTool.FromVctFrm3(pointerBody.measured_cp().Position())
     trArm = Frame()
-    trArm.FromVctFrm3(armBody.GetPositionCartesian().Position())
+    trArm.FromVctFrm3(armBody.measured_cp().Position())
     trBase = Frame()
-    trBase.FromVctFrm3(referenceBody.GetPositionCartesian().Position())
+    trBase.FromVctFrm3(referenceBody.measured_cp().Position())
     return trTool, trArm, trBase

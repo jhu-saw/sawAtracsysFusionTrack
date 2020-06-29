@@ -42,3 +42,12 @@ By default, Atracsys seems to be using `.ini` file for the tool geometry definit
    ```sh
    sudo apt install libiniparser-dev
    ```
+
+
+# Unable to find shared object file `libdevice64.so`
+
+Library is automatically copied in build tree but not found unless one sets:
+```sh
+export LD_LIBRARY_PATH=/home/anton/catkin_ws/build/saw_atracsys_fusion_track/lib
+```
+You could also point to the SDK path.

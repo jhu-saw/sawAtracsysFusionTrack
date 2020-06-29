@@ -100,7 +100,7 @@ int main(int argc, char * argv[])
         std::string topicName = toolName;
         std::replace(topicName.begin(), topicName.end(), '-', '_');
         rosBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
-            (toolName, "GetPositionCartesian",
+            (toolName, "measured_cp",
              "/atracsys/" + topicName);
         // Qt Widget
         toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");

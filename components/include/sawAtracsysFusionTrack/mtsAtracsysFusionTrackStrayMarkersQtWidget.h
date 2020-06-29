@@ -59,7 +59,7 @@ protected:
     struct ControllerStruct {
         mtsFunctionRead GetNumberOfThreeDFiducials;
         mtsFunctionRead GetThreeDFiducialPosition;
-        mtsFunctionRead GetPeriodStatistics;
+        mtsFunctionRead period_statistics;
     } Controller;
 
 private:
