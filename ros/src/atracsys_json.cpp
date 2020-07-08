@@ -19,13 +19,13 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
+#include <cisstCommon/cmnQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
-#include <ros/ros.h>
-#include <cisst_ros_bridge/mtsROSBridge.h>
+#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -40,10 +40,16 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
+    // create ROS node handle
+    ros::init(argc, argv, "atracsys", ros::init_options::AnonymousName);
+    ros::NodeHandle rosNodeHandle;
+
     // parse options
     cmnCommandLineOptions options;
     std::string jsonConfigFile = "";
     double rosPeriod = 10.0 * cmn_ms;
+    double tfPeriod = 20.0 * cmn_ms;
+    std::list<std::string> managerConfig;
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
@@ -51,6 +57,14 @@ int main(int argc, char * argv[])
     options.AddOptionOneValue("p", "ros-period",
                               "period in seconds to read all tool positions (default 0.01, 10 ms, 100Hz).  There is no point to have a period higher than the tracker component",
                               cmnCommandLineOptions::OPTIONAL_OPTION, &rosPeriod);
+    options.AddOptionOneValue("P", "tf-ros-period",
+                              "period in seconds to read all components and broadcast tf2 (default 0.02, 20 ms, 50Hz).  There is no point to have a period higher than the arm component's period",
+                              cmnCommandLineOptions::OPTIONAL_OPTION, &tfPeriod);
+    options.AddOptionMultipleValues("m", "component-manager",
+                                    "JSON files to configure component manager",
+                                    cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
+    options.AddOptionNoValue("D", "dark-mode",
+                             "replaces the default Qt palette with darker colors");
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -64,18 +78,26 @@ int main(int argc, char * argv[])
     std::cout << "Options provided:" << std::endl << arguments << std::endl;
 
     // create the components
-    mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
+    mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("atracsys");
     tracker->Configure(jsonConfigFile);
 
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
 
-    // ROS bridge
-    mtsROSBridge * rosBridge = new mtsROSBridge("AtracsysBridge", rosPeriod, true);
-
+    // ROS CRTK bridge
+    mts_ros_crtk_bridge * crtk_bridge
+        = new mts_ros_crtk_bridge("sensable_phantom_crtk_bridge", &rosNodeHandle);
+    crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
+    componentManager->AddComponent(crtk_bridge);
+    crtk_bridge->Connect();
+    
     // create a Qt user interface
     QApplication application(argc, argv);
+    cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
 
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;
@@ -96,12 +118,6 @@ int main(int argc, char * argv[])
     // configure all components
     for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
         toolName = tracker->GetToolName(tool);
-        // ROS publisher
-        std::string topicName = toolName;
-        std::replace(topicName.begin(), topicName.end(), '-', '_');
-        rosBridge->AddPublisherFromCommandRead<prmPositionCartesianGet, geometry_msgs::PoseStamped>
-            (toolName, "measured_cp",
-             "/atracsys/" + topicName);
         // Qt Widget
         toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");
         toolWidget->Configure();
@@ -111,23 +127,12 @@ int main(int argc, char * argv[])
         tabWidget->addTab(toolWidget, toolName.c_str());
     }
 
-    // add ROS bridge for stray markers
-    rosBridge->AddPublisherFromCommandRead<std::vector<vct3>, sensor_msgs::PointCloud>
-        ("Controller", "GetThreeDFiducialPosition",
-         "/atracsys/fiducials");
-
-    // add the bridge after all interfaces have been created
-    componentManager->AddComponent(rosBridge);
-
-    // connect all interfaces for the ROS bridge
-    for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
-        toolName = tracker->GetToolName(tool);
-        componentManager->Connect(rosBridge->GetName(), toolName,
-                                  tracker->GetName(), toolName);
+    // custom user components
+    if (!componentManager->ConfigureJSON(managerConfig)) {
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        return -1;
     }
-    componentManager->Connect(rosBridge->GetName(), "Controller",
-                              tracker->GetName(), "Controller");
-
+    
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);

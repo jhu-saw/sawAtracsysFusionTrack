@@ -44,12 +44,14 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
  public:
     inline mtsAtracsysFusionTrack(const std::string & componentName):
-        mtsTaskContinuous(componentName, 100) {
+        mtsTaskContinuous(componentName, 100),
+        m_configuration_state_table(100, "configuration") {
         Init();
     }
 
     inline mtsAtracsysFusionTrack(const mtsTaskContinuousConstructorArg & arg):
-        mtsTaskContinuous(arg) {
+        mtsTaskContinuous(arg),
+        m_configuration_state_table(100, "configuration") {
         Init();
     }
 
@@ -75,7 +77,7 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
       Atracsys provides .ini files but we also support .json. */
     bool AddTool(const std::string & toolName,
                  const std::string & fileName,
-                 const bool isJson);
+                 const bool isJson = false);
 
     /*! For backward compatibility */
     inline bool AddToolIni(const std::string & toolName,
@@ -84,7 +86,7 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
     }
 
     inline size_t GetNumberOfTools(void) const {
-        return Tools.size();
+        return m_tools.size();
     }
 
     std::string GetToolName(const size_t index) const;
@@ -94,12 +96,19 @@ protected:
     /*! Code called by all constructors. */
     void Init(void);
 
-    mtsAtracsysFusionTrackInternals * Internals;
-    typedef cmnNamedMap<mtsAtracsysFusionTrackTool> ToolsType;
-    ToolsType Tools;
+    /*! State table for configuration */
+    mtsStateTable m_configuration_state_table;
+    
+    mtsAtracsysFusionTrackInternals * m_internals;
+    typedef std::map<std::string, mtsAtracsysFusionTrackTool *> ToolsType;
+    ToolsType m_tools;
 
     int NumberOfStrayMarkers;
     std::vector<vct3> StrayMarkers;
+
+    /*! CRTK related methods */
+    mtsFunctionVoid m_crtk_interfaces_provided_updated;
+    std::vector<mtsDescriptionInterfaceFullName> m_crtk_interfaces_provided;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrack);
