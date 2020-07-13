@@ -12,14 +12,16 @@
 cmake_minimum_required (VERSION 2.8)
 
 # create a list of required cisst libraries
-set (REQUIRED_CISST_LIBRARIES cisstCommon
-                              cisstCommonQt
-                              cisstVector
-                              cisstVectorQt
-                              cisstOSAbstraction
-                              cisstMultiTask
-                              cisstMultiTaskQt
-                              cisstParameterTypes)
+set (REQUIRED_CISST_LIBRARIES
+     cisstCommon
+     cisstCommonQt
+     cisstVector
+     cisstVectorQt
+     cisstOSAbstraction
+     cisstMultiTask
+     cisstMultiTaskQt
+     cisstParameterTypes
+     cisstParameterTypesQt)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
@@ -60,20 +62,6 @@ if (cisst_FOUND_AS_REQUIRED)
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})
-
-    add_executable (sawAtracsysFusionTrackExample main.cpp
-						     sawAtracsysFusionTrackDataLinker.h
-						     sawAtracsysFusionTrackDataLinker.cpp)
-    set_property (TARGET sawAtracsysFusionTrackExample PROPERTY FOLDER "sawAtracsysFusionTrack/examples")
-
-    # link against non cisst libraries and saw components
-    target_link_libraries (sawAtracsysFusionTrackExample
-			    ${sawAtracsysFusionTrack_LIBRARIES}
-			    ${QT_LIBRARIES}
-                           )
-
-    # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawAtracsysFusionTrackExample ${REQUIRED_CISST_LIBRARIES})
 
   else (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
     message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack and cisstQt")

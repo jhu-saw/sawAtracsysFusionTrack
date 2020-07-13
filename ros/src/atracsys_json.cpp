@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -21,8 +21,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnCommandLineOptions.h>
 #include <cisstCommon/cmnQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
-#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 #include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
@@ -87,11 +87,11 @@ int main(int argc, char * argv[])
 
     // ROS CRTK bridge
     mts_ros_crtk_bridge * crtk_bridge
-        = new mts_ros_crtk_bridge("sensable_phantom_crtk_bridge", &rosNodeHandle);
+        = new mts_ros_crtk_bridge("atracsys_crtk_bridge", &rosNodeHandle);
     crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
-    
+
     // create a Qt user interface
     QApplication application(argc, argv);
     cmnQt::QApplicationExitsOnCtrlC();
@@ -111,28 +111,20 @@ int main(int argc, char * argv[])
                               tracker->GetName(), "Controller");
     tabWidget->addTab(strayMarkersWidget, "Stray Markers");
 
-    // tools
-    std::string toolName;
-    mtsAtracsysFusionTrackToolQtWidget * toolWidget;
-
-    // configure all components
-    for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
-        toolName = tracker->GetToolName(tool);
-        // Qt Widget
-        toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");
-        toolWidget->Configure();
-        componentManager->AddComponent(toolWidget);
-        componentManager->Connect(toolWidget->GetName(), "Tool",
-                                  tracker->GetName(), toolName);
-        tabWidget->addTab(toolWidget, toolName.c_str());
-    }
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->AddFactorySource("atracsys", "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
 
     // custom user components
     if (!componentManager->ConfigureJSON(managerConfig)) {
         CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
         return -1;
     }
-    
+
     // create and start all components
     componentManager->CreateAllAndWait(5.0 * cmn_s);
     componentManager->StartAllAndWait(5.0 * cmn_s);

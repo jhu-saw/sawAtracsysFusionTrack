@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -16,12 +16,14 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
+
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstCommon/cmnCommandLineOptions.h>
+#include <cisstCommon/cmnQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
+#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
-#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolQtWidget.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 #include <QApplication>
@@ -40,10 +42,16 @@ int main(int argc, char * argv[])
     // parse options
     cmnCommandLineOptions options;
     std::string jsonConfigFile = "";
+    std::list<std::string> managerConfig;
 
     options.AddOptionOneValue("j", "json-config",
                               "json configuration file",
-                              cmnCommandLineOptions::OPTIONAL_OPTION, &jsonConfigFile);
+                              cmnCommandLineOptions::REQUIRED_OPTION, &jsonConfigFile);
+    options.AddOptionMultipleValues("m", "component-manager",
+                                    "JSON files to configure component manager",
+                                    cmnCommandLineOptions::OPTIONAL_OPTION, &managerConfig);
+    options.AddOptionNoValue("D", "dark-mode",
+                             "replaces the default Qt palette with darker colors");
 
     // check that all required options have been provided
     std::string errorMessage;
@@ -57,7 +65,7 @@ int main(int argc, char * argv[])
     std::cout << "Options provided:" << std::endl << arguments << std::endl;
 
     // create the components
-    mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("FusionTrack");
+    mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("atracsys");
     tracker->Configure(jsonConfigFile);
 
     // add the components to the component manager
@@ -66,6 +74,10 @@ int main(int argc, char * argv[])
 
     // create a Qt user interface
     QApplication application(argc, argv);
+    cmnQt::QApplicationExitsOnCtrlC();
+    if (options.IsSet("dark-mode")) {
+        cmnQt::SetDarkMode();
+    }
 
     // organize all widgets in a tab widget
     QTabWidget * tabWidget = new QTabWidget;
@@ -79,17 +91,18 @@ int main(int argc, char * argv[])
                               tracker->GetName(), "Controller");
     tabWidget->addTab(strayMarkersWidget, "Stray Markers");
 
-    // tools
-    std::string toolName;
-    mtsAtracsysFusionTrackToolQtWidget * toolWidget;
-    for (size_t tool = 0; tool < tracker->GetNumberOfTools(); tool++) {
-        toolName = tracker->GetToolName(tool);
-        toolWidget = new mtsAtracsysFusionTrackToolQtWidget(toolName + "-GUI");
-        toolWidget->Configure();
-        componentManager->AddComponent(toolWidget);
-        componentManager->Connect(toolWidget->GetName(), "Tool",
-                                  tracker->GetName(), toolName);
-        tabWidget->addTab(toolWidget, toolName.c_str());
+    // tool position widgets
+    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
+        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->AddFactorySource("atracsys", "Controller");
+    componentManager->AddComponent(positionQtWidgetFactory);
+    positionQtWidgetFactory->Connect();
+    tabWidget->addTab(positionQtWidgetFactory, "Tools");
+
+    // custom user components
+    if (!componentManager->ConfigureJSON(managerConfig)) {
+        CMN_LOG_INIT_ERROR << "Configure: failed to configure component-manager, check cisstLog for error messages" << std::endl;
+        return -1;
     }
 
     // create and start all components

@@ -1,0 +1,15 @@
+/* -*- Mode: Javascript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+{
+    "tools":
+    [
+        {
+            "name": "Carbon-3",
+            "json-file": "geometry-carbon-3.json"
+        }
+        ,
+        {
+            "name": "Carbon-4",
+            "json-file": "geometry-carbon-4.json"
+        }
+    ]
+}
