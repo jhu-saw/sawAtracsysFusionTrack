@@ -1,14 +1,26 @@
 # sawAtracsysFusionTrack
+
 SAW wrapper for Atracsys FusionTrack optical tracker
 
-# Network
+# Configuration and compilation
 
-The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.
+## Firmware and SDK revision
 
-# ROS/Catkin build tools
+As of August 2020, the SDKs provided by Atracsys are NOT backward compatible nor are the firmwares.  So, the SDK version you must download and use depends on the hardware/firmware you have.  The Atracsys web site has compatibility tables.
+
+At JHU, our oldest device has:
+* hardware: 2.0.2.32
+* firmware (aka device software): 1.1.5.5f (~1.1.5.95)
+* latest supported SDK: 3.0.1
+
+## Network
+
+The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.  We found that USB network adaptors are not great so if you can use a proper PCIe network adaptor, that's better.  For the nework cables, make sure you have good quality CAT 6 cables.
+
+## Linux with ROS/Catkin build tools
 
 This is by far the simplest solution to compile and run the examples on Linux.
-See how to build cisst with ROS/Catkin tools on the cisst wiki: 
+See how to build cisst with ROS/Catkin tools on the cisst wiki:
 https://github.com/jhu-cisst/cisst/wiki/Compiling-cisst-and-SAW-with-CMake
 
 When compiling the SAW Atracsys code, you will need to specify where to find the Atracsys SDK.  Do a first `catkin build`, this build will fail because the directory containing the SDK is not defined.   To define it, use `ccmake` or `cmake-gui` on the build directory for the SAW Atracsys component.  For example:
@@ -30,11 +42,18 @@ If you also want ROS topics corresponding to the tracked tools, try:
 rosrun atracsys_ros atracsys_json -j config003.json
 ```
 
-# Windows
+# Unable to find shared object file `libdevice64.so`
 
-todo
+When using ROS, we copy the SDK libraries in the ROS build tree so you shouldn't have to edit your LD_LIBRARY path.  If you still get some error messages re. missing libraries, you need to locate the libraries and edit your `LD_LIBRARY_PATH`.  Something like:
+```sh
+export LD_LIBRARY_PATH=/home/anton/fusionTrack/fusionTrack_v3_0_1_gcc-4.9/lib/
+```
 
-# `.ini` or `.json` file
+## Windows
+
+Code should compile on Windows but this hasn't been tested.
+
+# Tool configuration files, `.ini` or `.json`
 
 By default, Atracsys seems to be using `.ini` file for the tool geometry definition.  But curiously, the SDK doesn't provide a standard function to load a `.ini` file.  SDKs up to version 3 come with a method in the `samples` directory but one would have to manualy copy the code in the library or wrapper.  Instead, this component provided two solutions:
 * Port the geometry files to JSON.  This is a fairly simple task considering that the geometry files are short text files.
@@ -43,11 +62,38 @@ By default, Atracsys seems to be using `.ini` file for the tool geometry definit
    sudo apt install libiniparser-dev
    ```
 
+# Running the code
 
-# Unable to find shared object file `libdevice64.so`
+## ROS on Linux
 
-Library is automatically copied in build tree but not found unless one sets:
+To start the ROS node, use:
 ```sh
-export LD_LIBRARY_PATH=/home/anton/catkin_ws/build/saw_atracsys_fusion_track/lib
+rosrun atracsys_ros atracsys_json -j config-carbon-3-4.json
 ```
-You could also point to the SDK path.
+
+Then you can use ROS topics to get the data:
+```sh
+anton@ubuntu1804:~$ rostopic list
+/atracsys/Carbon_3/measured_cp
+/atracsys/Carbon_4/measured_cp
+
+anton@ubuntu1804:~$ rostopic echo -n1 /atracsys/Carbon_3/measured_cp
+header:
+  seq: 0
+  stamp:
+    secs: 1599150843
+    nsecs: 305131509
+  frame_id: ''
+child_frame_id: ''
+transform:
+  translation:
+    x: -159.490570068
+    y: -70.4163589478
+    z: 1116.09936523
+  rotation:
+    x: 0.807423837632
+    y: 0.568897703366
+    z: 0.140481305321
+    w: -0.068462781014
+---
+```
