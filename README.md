@@ -17,6 +17,8 @@ At JHU, our oldest device has:
 
 The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.  We found that USB network adaptors are not great so if you can use a proper PCIe network adaptor, that's better.  For the nework cables, make sure you have good quality CAT 6 cables.
 
+On Linux, also make sure your network interface is configured with MTU set to 9000.  On Ubuntu, you can use `sudo nm-connection-editor` to set the MTU.
+
 ## Linux with ROS/Catkin build tools
 
 This is by far the simplest solution to compile and run the examples on Linux.
