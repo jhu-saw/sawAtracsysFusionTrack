@@ -21,7 +21,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstMultiTask/mtsTaskContinuous.h>
-#include <cisstParameterTypes/prmPositionCartesianGet.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGet.h>
 
 #include <json/json.h> // in order to read config file
 
@@ -103,8 +103,8 @@ protected:
     typedef std::map<std::string, mtsAtracsysFusionTrackTool *> ToolsType;
     ToolsType m_tools;
 
-    int NumberOfStrayMarkers;
-    std::vector<vct3> StrayMarkers;
+    size_t m_measured_cp_array_size;
+    prmPositionCartesianArrayGet m_measured_cp_array;
 
     /*! CRTK related methods */
     mtsFunctionVoid m_crtk_interfaces_provided_updated;

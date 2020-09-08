@@ -20,12 +20,14 @@ http://www.cisst.org/cisst/license.txt.
 #include <iostream>
 
 // Qt include
-#include <QString>
-#include <QtGui>
 #include <QMessageBox>
+#include <QCloseEvent>
+#include <QCoreApplication>
 
 // cisst
+#include <cisstVector/vctPose3DQtWidget.h>
 #include <cisstMultiTask/mtsInterfaceRequired.h>
+#include <cisstParameterTypes/prmPositionCartesianArrayGet.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrackStrayMarkersQtWidget, mtsComponent, std::string);
@@ -37,8 +39,8 @@ mtsAtracsysFusionTrackStrayMarkersQtWidget::mtsAtracsysFusionTrackStrayMarkersQt
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
     if (interfaceRequired) {
-        interfaceRequired->AddFunction("GetNumberOfThreeDFiducials", Controller.GetNumberOfThreeDFiducials);
-        interfaceRequired->AddFunction("GetThreeDFiducialPosition", Controller.GetThreeDFiducialPosition);
+        interfaceRequired->AddFunction("measured_cp_array_size", Controller.measured_cp_array_size);
+        interfaceRequired->AddFunction("measured_cp_array", Controller.measured_cp_array);
         interfaceRequired->AddFunction("period_statistics", Controller.period_statistics);
     }
     setupUi();
@@ -83,16 +85,21 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::timerEvent(QTimerEvent * CMN_UN
     if (this->isHidden()) {
         return;
     }
-
     mtsExecutionResult executionResult;
-    int numberOfMarkers;
-    executionResult = Controller.GetNumberOfThreeDFiducials(numberOfMarkers);
+    size_t numberOfMarkers;
+    executionResult = Controller.measured_cp_array_size(numberOfMarkers);
     if (!executionResult) {
-        CMN_LOG_CLASS_RUN_ERROR << "Controller.GetNumberOfThreeDFiducials failed, \""
+        CMN_LOG_CLASS_RUN_ERROR << "Controller.measured_cp_array_size failed, \""
                                 << executionResult << "\"" << std::endl;
     }
     else {
-        QLNumberOfMarkers->setNum(numberOfMarkers);
+        QLNumberOfMarkers->setNum(static_cast<int>(numberOfMarkers));
+        prmPositionCartesianArrayGet poses;
+        Controller.measured_cp_array(poses);
+        QVPoses->Clear();
+        for (const auto & pose : poses.Positions()) {
+            QVPoses->SetValue(pose);
+        }
     }
 
     Controller.period_statistics(IntervalStatistics);
@@ -103,27 +110,20 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::setupUi(void)
 {
     QVBoxLayout * mainLayout = new QVBoxLayout;
 
-    // Side by side for 3D position and timing
-    QHBoxLayout * topLayout = new QHBoxLayout;
-    mainLayout->addLayout(topLayout);
-
     // Timing
-    QVBoxLayout * timingLayout = new QVBoxLayout();
     QMIntervalStatistics = new mtsQtWidgetIntervalStatistics();
-    timingLayout->addWidget(QMIntervalStatistics);
-    timingLayout->addStretch();
-    topLayout->addLayout(timingLayout);
+    mainLayout->addWidget(QMIntervalStatistics);
 
     // Vectors of values
-    QGridLayout * gridLayout = new QGridLayout;
-    mainLayout->addLayout(gridLayout);
-
-    gridLayout->setSpacing(1);
-    int row = 0;
-    gridLayout->addWidget(new QLabel("Number of markers"), row, 0);
+    QHBoxLayout * nbPosesLayout = new QHBoxLayout;
+    nbPosesLayout->addWidget(new QLabel("Number of markers"));
     QLNumberOfMarkers = new QLabel();
-    gridLayout->addWidget(QLNumberOfMarkers, row, 1);
-    row++;
+    nbPosesLayout->addWidget(QLNumberOfMarkers);
+    mainLayout->addLayout(nbPosesLayout);
+
+    // 3D display of markers
+    QVPoses = new vctPose3DQtWidget();
+    mainLayout->addWidget(QVPoses);
 
     setLayout(mainLayout);
     setWindowTitle("StrayMarkers");

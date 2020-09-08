@@ -20,9 +20,8 @@ http://www.cisst.org/cisst/license.txt.
 #ifndef _mtsAtracsysFusionTrackStrayMarkersQtWidget_h
 #define _mtsAtracsysFusionTrackStrayMarkersQtWidget_h
 
+#include <cisstVector/vctForwardDeclarationsQt.h>
 #include <cisstMultiTask/mtsComponent.h>
-#include <cisstParameterTypes/prmPositionCartesianGet.h>
-#include <cisstVector/vctQtWidgetFrame.h>
 #include <cisstMultiTask/mtsQtWidgetIntervalStatistics.h>
 
 #include <QWidget>
@@ -57,14 +56,16 @@ private:
 
 protected:
     struct ControllerStruct {
-        mtsFunctionRead GetNumberOfThreeDFiducials;
-        mtsFunctionRead GetThreeDFiducialPosition;
+        mtsFunctionRead measured_cp_array_size;
+        mtsFunctionRead measured_cp_array;
         mtsFunctionRead period_statistics;
     } Controller;
 
 private:
-    prmPositionCartesianGet PositionCartesian;
     QLabel * QLNumberOfMarkers;
+
+    // Stray markers
+    vctPose3DQtWidget * QVPoses;
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;

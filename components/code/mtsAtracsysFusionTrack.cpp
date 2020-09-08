@@ -19,6 +19,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <ftkInterface.h>
 #include <cisstCommon/cmnUnits.h>
 #include <cisstMultiTask/mtsInterfaceProvided.h>
+#include <cisstParameterTypes/prmPositionCartesianGet.h>
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 
@@ -267,14 +268,14 @@ void mtsAtracsysFusionTrack::Init(void)
     AddStateTable(&m_configuration_state_table);
     m_configuration_state_table.AddData(m_crtk_interfaces_provided, "crtk_interfaces_provided");
 
-    StateTable.AddData(NumberOfStrayMarkers, "NumberOfThreeDFiducials");
-    StateTable.AddData(StrayMarkers, "ThreeDFiducialPosition");
+    StateTable.AddData(m_measured_cp_array_size, "measured_cp_array_size");
+    StateTable.AddData(m_measured_cp_array, "measured_cp_array");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
         // system info
-        provided->AddCommandReadState(StateTable, NumberOfStrayMarkers, "GetNumberOfThreeDFiducials");
-        provided->AddCommandReadState(StateTable, StrayMarkers, "GetThreeDFiducialPosition");
+        provided->AddCommandReadState(StateTable, m_measured_cp_array_size, "measured_cp_array_size");
+        provided->AddCommandReadState(StateTable, m_measured_cp_array, "measured_cp_array");
         provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
 
         // crtk interfaces
@@ -396,7 +397,13 @@ void mtsAtracsysFusionTrack::Startup(void)
 {
     CMN_LOG_CLASS_RUN_ERROR << "Startup" << std::endl;
     // trigger event so connected component can bridge crtk provided interface as needed
+    m_configuration_state_table.Start();
+    m_crtk_interfaces_provided.push_back(mtsDescriptionInterfaceFullName("localhost", this->Name, "Controller"));
+    m_configuration_state_table.Advance();
     m_crtk_interfaces_provided_updated();
+
+    // set reference frame for measured_cp_array
+    m_measured_cp_array.ReferenceFrame() = this->Name;
 }
 
 
@@ -413,8 +420,10 @@ void mtsAtracsysFusionTrack::Run(void)
     // negative error codes are warnings
     if (status != FTK_OK) {
         if (status < 0) {
+            m_measured_cp_array.SetValid(true);
             // std::cerr << "Warning: " << status << std::endl;
         } else {
+            m_measured_cp_array.SetValid(false);
             std::cerr << "Error: " << status << std::endl;
             return;
         }
@@ -504,12 +513,11 @@ void mtsAtracsysFusionTrack::Run(void)
         break;
     }
 
-    StrayMarkers.clear();
-    NumberOfStrayMarkers = m_internals->Frame->threeDFiducialsCount;
-    StrayMarkers.resize(NumberOfStrayMarkers);
+    m_measured_cp_array_size = m_internals->Frame->threeDFiducialsCount;
+    m_measured_cp_array.Positions().resize(m_measured_cp_array_size);
 
     //printf("3D fiducials:\n");
-    for (uint32 m = 0; m < NumberOfStrayMarkers; m++) {
+    for (uint32 m = 0; m < m_measured_cp_array_size; m++) {
         /*
           printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
           m_internals->threedFiducials[m].leftIndex,
@@ -521,10 +529,13 @@ void mtsAtracsysFusionTrack::Run(void)
           m_internals->threedFiducials[m].triangulationErrorMM,
           m_internals->threedFiducials[m].probability);
         */
-        StrayMarkers[m].X() = m_internals->threedFiducials[m].positionMM.x;
-        StrayMarkers[m].Y() = m_internals->threedFiducials[m].positionMM.y;
-        StrayMarkers[m].Z() = m_internals->threedFiducials[m].positionMM.z;
+        m_measured_cp_array.Positions().at(m).Translation().Assign(m_internals->threedFiducials[m].positionMM.x,
+                                                                   m_internals->threedFiducials[m].positionMM.y,
+                                                                   m_internals->threedFiducials[m].positionMM.z);
     }
+
+    // maybe this helps with error 13?
+    Sleep(50.0 * cmn_ms);
 }
 
 void mtsAtracsysFusionTrack::Cleanup(void)
@@ -606,6 +617,10 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     // register newly created tool
     this->m_tools[toolName] = tool;
     m_internals->GeometryIdToTool[geometry.geometryId] = tool;
+
+    // frames used
+    tool->m_measured_cp.ReferenceFrame() = this->Name;
+    tool->m_measured_cp.MovingFrame() = toolName;
 
     // add data for this tool and populate tool interface
     tool->m_state_table.SetAutomaticAdvance(false);
