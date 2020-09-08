@@ -89,6 +89,11 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
         return m_tools.size();
     }
 
+    /*! Set the maximum number of stray markers to look for. */
+    inline void SetStrayMarkerMax(const size_t max) {
+        m_stray_markers_max = max;
+    }
+
     std::string GetToolName(const size_t index) const;
 
 protected:
@@ -98,10 +103,13 @@ protected:
 
     /*! State table for configuration */
     mtsStateTable m_configuration_state_table;
-    
+
     mtsAtracsysFusionTrackInternals * m_internals;
     typedef std::map<std::string, mtsAtracsysFusionTrackTool *> ToolsType;
     ToolsType m_tools;
+
+    /*! Number of stray markers to track */
+    size_t m_stray_markers_max;
 
     size_t m_measured_cp_array_size;
     prmPositionCartesianArrayGet m_measured_cp_array;

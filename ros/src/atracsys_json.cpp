@@ -114,6 +114,7 @@ int main(int argc, char * argv[])
     // tool position widgets
     prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
         = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
     positionQtWidgetFactory->AddFactorySource("atracsys", "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
