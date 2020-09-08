@@ -99,3 +99,13 @@ transform:
     w: -0.068462781014
 ---
 ```
+
+
+# Known issues, features to add
+
+* Support for SDK 4 while preserving SDK 3 support for older tracking system
+* Note in Atracsys documentation re.2MB+ images, port fix so this code
+* Periodicity is now hardcoded at end of Run method with Sleep(50ms).  If not sleeping, we get errors in Atracsys log re. semaphore (looks like blocking doesn't work)
+* Add method to convert error code to human readable messages.  SDK 3 has such method but with older g++ ABI not compatible with recent binaries (because of std::string).  We could re-implement an equivalent in this code.
+* Add command + ROS topics to stop/start stray marker tracking (or change max number)
+* Maybe add some code to collect stray markers and generate geometry.ini/json
