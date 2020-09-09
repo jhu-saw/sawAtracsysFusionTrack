@@ -39,7 +39,6 @@ mtsAtracsysFusionTrackStrayMarkersQtWidget::mtsAtracsysFusionTrackStrayMarkersQt
     // Setup CISST Interface
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("Controller");
     if (interfaceRequired) {
-        interfaceRequired->AddFunction("measured_cp_array_size", Controller.measured_cp_array_size);
         interfaceRequired->AddFunction("measured_cp_array", Controller.measured_cp_array);
         interfaceRequired->AddFunction("period_statistics", Controller.period_statistics);
     }
@@ -85,21 +84,11 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::timerEvent(QTimerEvent * CMN_UN
     if (this->isHidden()) {
         return;
     }
-    mtsExecutionResult executionResult;
-    size_t numberOfMarkers;
-    executionResult = Controller.measured_cp_array_size(numberOfMarkers);
-    if (!executionResult) {
-        CMN_LOG_CLASS_RUN_ERROR << "Controller.measured_cp_array_size failed, \""
-                                << executionResult << "\"" << std::endl;
-    }
-    else {
-        QLNumberOfMarkers->setNum(static_cast<int>(numberOfMarkers));
-        prmPositionCartesianArrayGet poses;
-        Controller.measured_cp_array(poses);
-        QVPoses->Clear();
-        for (const auto & pose : poses.Positions()) {
-            QVPoses->SetValue(pose);
-        }
+    prmPositionCartesianArrayGet poses;
+    Controller.measured_cp_array(poses);
+    QVPoses->Clear();
+    for (const auto & pose : poses.Positions()) {
+        QVPoses->SetValue(pose);
     }
 
     Controller.period_statistics(IntervalStatistics);
@@ -114,15 +103,9 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::setupUi(void)
     QMIntervalStatistics = new mtsQtWidgetIntervalStatistics();
     mainLayout->addWidget(QMIntervalStatistics);
 
-    // Vectors of values
-    QHBoxLayout * nbPosesLayout = new QHBoxLayout;
-    nbPosesLayout->addWidget(new QLabel("Number of markers"));
-    QLNumberOfMarkers = new QLabel();
-    nbPosesLayout->addWidget(QLNumberOfMarkers);
-    mainLayout->addLayout(nbPosesLayout);
-
     // 3D display of markers
     QVPoses = new vctPose3DQtWidget();
+    QVPoses->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI);
     mainLayout->addWidget(QVPoses);
 
     setLayout(mainLayout);

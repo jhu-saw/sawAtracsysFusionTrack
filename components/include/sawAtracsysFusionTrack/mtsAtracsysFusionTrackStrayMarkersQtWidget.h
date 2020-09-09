@@ -56,14 +56,11 @@ private:
 
 protected:
     struct ControllerStruct {
-        mtsFunctionRead measured_cp_array_size;
         mtsFunctionRead measured_cp_array;
         mtsFunctionRead period_statistics;
     } Controller;
 
 private:
-    QLabel * QLNumberOfMarkers;
-
     // Stray markers
     vctPose3DQtWidget * QVPoses;
 

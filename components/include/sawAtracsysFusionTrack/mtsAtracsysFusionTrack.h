@@ -111,7 +111,6 @@ protected:
     /*! Number of stray markers to track */
     size_t m_stray_markers_max;
 
-    size_t m_measured_cp_array_size;
     prmPositionCartesianArrayGet m_measured_cp_array;
 
     /*! CRTK related methods */

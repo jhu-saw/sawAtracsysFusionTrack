@@ -279,13 +279,11 @@ void mtsAtracsysFusionTrack::Init(void)
     AddStateTable(&m_configuration_state_table);
     m_configuration_state_table.AddData(m_crtk_interfaces_provided, "crtk_interfaces_provided");
 
-    StateTable.AddData(m_measured_cp_array_size, "measured_cp_array_size");
     StateTable.AddData(m_measured_cp_array, "measured_cp_array");
 
     mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
     if (provided) {
         // system info
-        provided->AddCommandReadState(StateTable, m_measured_cp_array_size, "measured_cp_array_size");
         provided->AddCommandReadState(StateTable, m_measured_cp_array, "measured_cp_array");
         provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
 
@@ -524,11 +522,11 @@ void mtsAtracsysFusionTrack::Run(void)
         break;
     }
 
-    m_measured_cp_array_size = m_internals->m_frame_query->threeDFiducialsCount;
-    m_measured_cp_array.Positions().resize(m_measured_cp_array_size);
+    size_t stray_count = m_internals->m_frame_query->threeDFiducialsCount;
+    m_measured_cp_array.Positions().resize(stray_count);
 
     //printf("3D fiducials:\n");
-    for (uint32 m = 0; m < m_measured_cp_array_size; m++) {
+    for (uint32 m = 0; m < stray_count; m++) {
 #if 0
           printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
           m_internals->m_stray_markers[m].leftIndex,
