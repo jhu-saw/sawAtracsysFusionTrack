@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2015-2020 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2015-2021 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -36,7 +36,7 @@ set (REQUIRED_CISST_LIBRARIES
      cisstParameterTypesQt
      cisstQt)
 
-find_package (cisst REQUIRED ${REQUIRED_CISST_LIBRARIES})
+find_package (cisst 1.1.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
 if (cisst_FOUND_AS_REQUIRED)
 
