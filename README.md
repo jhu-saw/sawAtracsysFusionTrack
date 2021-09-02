@@ -6,7 +6,7 @@ SAW wrapper for Atracsys FusionTrack optical tracker
 
 ## Firmware and SDK revision
 
-As of August 2020, the SDKs provided by Atracsys are NOT backward compatible nor are the firmwares.  So, the SDK version you must download and use depends on the hardware/firmware you have.  The Atracsys web site has compatibility tables.
+As of August 2020, the SDKs provided by Atracsys are NOT backward compatible nor are the firmwares.  So, the SDK version you must download and use depends on the hardware/firmware you have.  The Atracsys web site has compatibility tables.  See https://www.atracsys-measurement.com/support/support-download-fusiontrack/
 
 At JHU, our oldest device has:
 * hardware: 2.0.2.32
