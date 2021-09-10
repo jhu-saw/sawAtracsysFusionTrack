@@ -21,7 +21,7 @@ On Linux, also make sure your network interface is configured with MTU set to 90
 
 ## Linux with ROS/Catkin build tools
 
-We would strongly recommend to build the code using the ROS 1 tools.   You would need to first install ROS 1 using instructions from www.ros.org.  Assuming you’re using Ubuntu 16.04, 18.04 or 20.04, this is pretty easy.
+We would strongly recommend to build the code using the ROS 1 tools.   You would need to first install ROS 1 using instructions from www.ros.org.  Assuming you’re using Ubuntu 16.04, 18.04 or 20.04, this is pretty easy.  On Ubuntu 18.04 and above, we also recommend to install `libiniparser` using `sudo apt install libiniparser-dev`.
  
 Once ROS is installed, the process is similar to the dVRK code installations.  The instructions can be found here: https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall.   The main difference is the “wstool merge” line.   You would need to use the following line instead of the one provided for the dVRK wiki:
 ```sh
