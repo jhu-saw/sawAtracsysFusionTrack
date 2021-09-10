@@ -13,6 +13,10 @@ project (sawAtracsysFusionTrack)
 
 cmake_minimum_required (VERSION 2.8)
 
+set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD_REQUIRED ON)
+set (CMAKE_CXX_EXTENSIONS OFF)
+
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES cisstCommon
                               cisstVector
@@ -101,7 +105,10 @@ if (cisst_FOUND_AS_REQUIRED)
          "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
          "${sawAtracsysFusionTrack_BINARY_DIR}/include")
     set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}" "${atracsys_DIR}/lib")
-    set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES} ${INI_PARSER_LIBRARIES})
+    set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
+    if (INI_PARSER_FOUND)
+      set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${INI_PARSER_LIBRARIES})
+    endif ()
     # Set the version number
     set (sawAtracsysFusionTrack_VERSION_MAJOR "1")
     set (sawAtracsysFusionTrack_VERSION_MINOR "1")
