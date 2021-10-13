@@ -39,6 +39,7 @@ if (cisst_FOUND_AS_REQUIRED)
   # still looking for .ini parser
   if (WIN32)
     # Windows, not sure if there's a system provided library
+    set (INI_PARSER_FOUND 0)
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     # Linux, look for inih
     find_path (INI_PARSER_INCLUDE_DIR iniparser/iniparser.h)
@@ -62,22 +63,31 @@ if (cisst_FOUND_AS_REQUIRED)
   endif ()
 
   # this should be replaced by a find AtracsysFusionTrack
-  set (atracsys_FOUND 0)
+  set (atracsys_FOUND FALSE)
   if (WIN32)
     # Windows
-    set (atracsys_DIR "C:/Program Files/Atracsys/Passive Tracking SDK")
-    include_directories (${atracsys_DIR}/include
-                         ${atracsys_DIR}/bin)
-    link_directories (${atracsys_DIR}/bin)
-    set (atracsys_LIBRARIES winmm fusionTrack64.lib)
-    set (atracsys_FOUND 1)
+    find_path (atracsys_INCLUDE_DIR
+               NAMES "ftkInterface.h"
+               PATH_SUFFIXES "src/include" "include"
+               PATHS "C:/Program Files/Atracsys/Passive Tracking SDK")
+    find_library (atracsys_LIBRARY_fusionTrack
+               NAMES "fusionTrack64" "fusionTrack32"
+               PATH_SUFFIXES "lib"
+               PATHS "C:/Program Files/Atracsys/Passive Tracking SDK")
+    if (atracsys_INCLUDE_DIR AND atracsys_LIBRARY_fusionTrack)
+      set (atracsys_FOUND TRUE)
+      get_filename_component(atracsys_LIBRARY_DIR ${atracsys_LIBRARY_fusionTrack} DIRECTORY CACHE)
+      include_directories (${atracsys_INCLUDE_DIR})
+      link_directories (${atracsys_LIBRARY_DIR})
+      set (atracsys_LIBRARIES winmm fusionTrack64.lib)
+    endif ()
     # Linux
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_path (atracsys_DIR
                NAMES "ftkInterface.h"
                PATH_SUFFIXES "src/include" "include")
     if (EXISTS "${atracsys_DIR}/src/include/ftkInterface.h" OR EXISTS "${atracsys_DIR}/include/ftkInterface.h")
-      set (atracsys_FOUND 1)
+      set (atracsys_FOUND TRUE)
       include_directories (${atracsys_DIR}/src/include ${atracsys_DIR}/include)
       # libraries
       link_directories (${atracsys_DIR}/bin)
@@ -89,12 +99,14 @@ if (cisst_FOUND_AS_REQUIRED)
       find_library (atracsys_LIBRARY_device
                     NAMES device64
                     PATHS ${atracsys_DIR}/bin ${atracsys_DIR}/lib)
+      get_filename_component(atracsys_LIBRARY_DIR ${atracsys_LIBRARY_fusionTrack} DIRECTORY CACHE)
       file (MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
       file (COPY ${atracsys_LIBRARY_fusionTrack} ${atracsys_LIBRARY_device}
             DESTINATION ${LIBRARY_OUTPUT_PATH})
     endif ()
   else (WIN32)
     # Everything else
+    set (atracsys_LIBRARY_DIR "")
     set (atracsys_LIBRARIES pthread rt fusionTrack64)
   endif (WIN32)
 
@@ -104,7 +116,7 @@ if (cisst_FOUND_AS_REQUIRED)
     set (sawAtracsysFusionTrack_INCLUDE_DIR
          "${sawAtracsysFusionTrack_SOURCE_DIR}/include"
          "${sawAtracsysFusionTrack_BINARY_DIR}/include")
-    set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}" "${atracsys_DIR}/lib")
+    set (sawAtracsysFusionTrack_LIBRARY_DIR "${LIBRARY_OUTPUT_PATH}" "${atracsys_LIBRARY_DIR}")
     set (sawAtracsysFusionTrack_LIBRARIES sawAtracsysFusionTrack ${atracsys_LIBRARIES})
     if (INI_PARSER_FOUND)
       set (sawAtracsysFusionTrack_LIBRARIES ${sawAtracsysFusionTrack_LIBRARIES} ${INI_PARSER_LIBRARIES})
