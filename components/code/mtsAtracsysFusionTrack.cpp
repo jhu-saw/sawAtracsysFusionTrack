@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2021 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -260,7 +260,7 @@ public:
 };
 
 
-void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType CMN_UNUSED(type))
+static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType CMN_UNUSED(type))
 {
     uint64 * lastDevice = reinterpret_cast<uint64 *>(user);
     if (lastDevice) {
@@ -294,10 +294,28 @@ void mtsAtracsysFusionTrack::Init(void)
     }
 }
 
+#if 0
+static void OptionEnumerator(uint64 sn, void *CMN_UNUSED(user), ftkOptionsInfo *oi)
+{
+    CMN_LOG_INIT_VERBOSE << "Option " << oi->id << "  " << oi->name << std::endl;
+}
+#endif
 
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
+    ftkBuffer buffer;
+
+    ftkVersion(&buffer);
+    CMN_LOG_CLASS_INIT_VERBOSE << "Atracsys SDK Version " << buffer.data << std::endl;
+
+#if 0
+    if (ftkEnumerateOptions(m_internals->m_library, 0LL, OptionEnumerator, NULL) != FTK_OK)
+        CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to enumerate Atracsys options" << std::endl;
+
+    if (ftkGetData(m_internals->m_library, 0LL, FTK_OPT_DRIVER_VER, &buffer) != FTK_OK)
+        CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to get Atracsys Driver version" << std::endl;
+#endif
 
     // initialize fusion track library
     m_internals->m_library = ftkInit();
@@ -351,7 +369,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     cmnPath configPath(cmnPath::GetWorkingDirectory());
 
     // add FTK path too
-    ftkBuffer buffer;
     if ((ftkGetData(m_internals->m_library, m_internals->m_device,
                     FTK_OPT_DATA_DIR, &buffer ) == FTK_OK) && (buffer.size > 0)) {
         std::string ftkPath(reinterpret_cast<char*>(buffer.data));
