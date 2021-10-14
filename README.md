@@ -17,7 +17,9 @@ At JHU, our oldest device has:
 
 The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.  We found that USB network adaptors are not great so if you can use a proper PCIe network adaptor, that's better.  For the nework cables, make sure you have good quality CAT 6 cables.
 
-On Linux, also make sure your network interface is configured with MTU set to 9000.  On Ubuntu, you can use `sudo nm-connection-editor` to set the MTU.
+Also make sure your network interface is configured with MTU set to 9000.
+* Ubuntu: use `sudo nm-connection-editor` to set the MTU.
+* Windows: choose the connection `Properties`, then `Configure...Advanced` and set the `Jumbo Packet` property to have a value of `9014 Bytes`.
 
 ## Linux with ROS/Catkin build tools
 
@@ -56,7 +58,7 @@ export LD_LIBRARY_PATH=/home/anton/fusionTrack/fusionTrack_v3_0_1_gcc-4.9/lib/
 
 ## Windows
 
-Code should compile on Windows but this hasn't been tested.
+The code compiles on Windows but has not been tested.
 
 # Tool configuration files, `.ini` or `.json`
 
