@@ -368,7 +368,8 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     // allows the use of relative paths for geometry files
     cmnPath configPath(cmnPath::GetWorkingDirectory());
 
-#if 0
+#ifdef FTK_OPT_DATA_DIR
+    // FTK_OPT_DATA_DIR is defined in SDK 3.0.1, but not in SDK 4.5.2
     // add FTK path too
     if ((ftkGetData(m_internals->m_library, m_internals->m_device,
                     FTK_OPT_DATA_DIR, &buffer ) == ftkError::FTK_OK) && (buffer.size > 0)) {
