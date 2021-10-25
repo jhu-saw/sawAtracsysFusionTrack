@@ -241,7 +241,7 @@ public:
         ftkError err(ftkSetFrameOptions(false, false, 16u, 16u,
                                         number_of_stray_markers, number_of_tools,
                                         m_frame_query));
-        if (err != FTK_OK) {
+        if (err != ftkError::FTK_OK) {
             CMN_LOG_INIT_ERROR << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions failed" << std::endl;
         } else {
             CMN_LOG_INIT_VERBOSE << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions ok" << std::endl;
@@ -330,7 +330,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         ftkError error = ftkEnumerateDevices(m_internals->m_library,
                                              mtsAtracsysFusionTrackDeviceEnum,
                                              &(m_internals->m_device));
-        if (error != FTK_OK) {
+        if (error != ftkError::FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
                                      << this->GetName() << ")" << std::endl;
             ftkClose(&m_internals->m_library);
@@ -368,12 +368,14 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     // allows the use of relative paths for geometry files
     cmnPath configPath(cmnPath::GetWorkingDirectory());
 
+#if 0
     // add FTK path too
     if ((ftkGetData(m_internals->m_library, m_internals->m_device,
-                    FTK_OPT_DATA_DIR, &buffer ) == FTK_OK) && (buffer.size > 0)) {
+                    FTK_OPT_DATA_DIR, &buffer ) == ftkError::FTK_OK) && (buffer.size > 0)) {
         std::string ftkPath(reinterpret_cast<char*>(buffer.data));
         configPath.Add(ftkPath);
     }
+#endif
 
     // now, find the tool geometry, either as ini or json file
     const Json::Value jsonTools = jsonConfig["tools"];
@@ -451,29 +453,29 @@ void mtsAtracsysFusionTrack::Run(void)
                                       m_internals->m_frame_query,
                                       100u);
     // negative error codes are warnings
-    if (status != FTK_OK) {
-        if (status < 0) {
+    if (status != ftkError::FTK_OK) {
+        if (static_cast<int>(status) < 0) {
             m_measured_cp_array.SetValid(true);
             // std::cerr << "Warning: " << status << std::endl;
         } else {
             m_measured_cp_array.SetValid(false);
-            std::cerr << "Error: " << status << std::endl;
+            std::cerr << "Error: " << static_cast<int>(status) << std::endl;
             return;
         }
     }
 
     // check results of last frame
     switch (m_internals->m_frame_query->markersStat) {
-    case QS_WAR_SKIPPED:
+    case ftkQueryStatus::QS_WAR_SKIPPED:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
         break;
-    case QS_ERR_INVALID_RESERVED_SIZE:
+    case ftkQueryStatus::QS_ERR_INVALID_RESERVED_SIZE:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
         break;
     default:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
-    case QS_OK:
+    case ftkQueryStatus::QS_OK:
         break;
     }
 
@@ -526,16 +528,16 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // ---- 3D Fiducials, aka stray markers ---
     switch (m_internals->m_frame_query->threeDFiducialsStat) {
-    case QS_WAR_SKIPPED:
+    case ftkQueryStatus::QS_WAR_SKIPPED:
         CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
         break;
-    case QS_ERR_INVALID_RESERVED_SIZE:
+    case ftkQueryStatus::QS_ERR_INVALID_RESERVED_SIZE:
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
         break;
     default:
         CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
-    case QS_OK:
+    case ftkQueryStatus::QS_OK:
         break;
     }
 
@@ -607,7 +609,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     }
 
     ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_device, &geometry);
-    if (error != FTK_OK) {
+    if (error != ftkError::FTK_OK) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
                                  << "\" using geometry file \"" << fileName
                                  << "\" (" << this->GetName() << ")" << std::endl;
