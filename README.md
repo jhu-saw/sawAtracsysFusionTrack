@@ -32,7 +32,7 @@ wstool merge https://raw.githubusercontent.com/jhu-saw/sawAtracsysFusionTrack/de
 
 When compiling the SAW Atracsys code, you will need to specify where to find the Atracsys SDK.  Do a first `catkin build`, this build will fail because the directory containing the SDK is not defined.   To define it, use `ccmake` on the build directory for the SAW Atracsys component.  For example:
 ```sh
-adeguet1@lcsr-qla:~/catkin_ws$ cmake-gui devel/saw_atracsys_fusion_track
+adeguet1@lcsr-qla:~/catkin_ws$ ccmake devel/saw_atracsys_fusion_track
 ```
 In the command above, the ROS workspace is `~/catkin_ws` and the build tree is `devel`.
 
