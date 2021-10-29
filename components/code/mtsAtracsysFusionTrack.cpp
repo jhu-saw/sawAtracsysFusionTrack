@@ -217,7 +217,7 @@ class mtsAtracsysFusionTrackInternals
 public:
     mtsAtracsysFusionTrackInternals():
         m_library(0),
-        m_device(0),
+        m_sn(0),
         m_frame_query(0)
     {}
 
@@ -227,7 +227,7 @@ public:
             delete m_frame_query;
         }
         m_frame_query = ftkCreateFrame();
-        memset(m_frame_query, 0, sizeof(ftkFrameQuery));
+        // memset(m_frame_query, 0, sizeof(ftkFrameQuery));  // lead to error 4 with SDK 4.4.1
 
         // tools, aka fT Markers
         m_tools = new ftkMarker[number_of_tools];
@@ -239,6 +239,7 @@ public:
         m_frame_query->threeDFiducialsVersionSize.ReservedSize = sizeof(ftk3DFiducial) * number_of_stray_markers;
 
         ftkError err(ftkSetFrameOptions(false, false, 16u, 16u,
+                                        // 0u, 16u,
                                         number_of_stray_markers, number_of_tools,
                                         m_frame_query));
         if (err != ftkError::FTK_OK) {
@@ -249,7 +250,7 @@ public:
     }
 
     ftkLibrary m_library;
-    uint64 m_device;
+    uint64 m_sn;
     ftkFrameQuery * m_frame_query;
     ftkMarker * m_tools;
     ftk3DFiducial * m_stray_markers;
@@ -329,18 +330,18 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         // search for devices
         ftkError error = ftkEnumerateDevices(m_internals->m_library,
                                              mtsAtracsysFusionTrackDeviceEnum,
-                                             &(m_internals->m_device));
+                                             &(m_internals->m_sn));
         if (error != ftkError::FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
                                      << this->GetName() << ")" << std::endl;
             ftkClose(&m_internals->m_library);
         }
 
-        if (m_internals->m_device != 0LL) {
+        if (m_internals->m_sn != 0LL) {
             break;
         }
     }
-    if (m_internals->m_device == 0LL) {
+    if (m_internals->m_sn == 0LL) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected ("
                                  << this->GetName() << ")" << std::endl;
         ftkClose(&m_internals->m_library);
@@ -371,7 +372,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 #ifdef FTK_OPT_DATA_DIR
     // FTK_OPT_DATA_DIR is defined in SDK 3.0.1, but not in SDK 4.5.2
     // add FTK path too
-    if ((ftkGetData(m_internals->m_library, m_internals->m_device,
+    if ((ftkGetData(m_internals->m_library, m_internals->m_sn,
                     FTK_OPT_DATA_DIR, &buffer ) == ftkError::FTK_OK) && (buffer.size > 0)) {
         std::string ftkPath(reinterpret_cast<char*>(buffer.data));
         configPath.Add(ftkPath);
@@ -450,13 +451,13 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // get latest frame from fusion track library/device
     ftkError status = ftkGetLastFrame(m_internals->m_library,
-                                      m_internals->m_device,
+                                      m_internals->m_sn,
                                       m_internals->m_frame_query,
                                       100u);
     // negative error codes are warnings
+    m_measured_cp_array.SetValid(true);
     if (status != ftkError::FTK_OK) {
         if (static_cast<int>(status) < 0) {
-            m_measured_cp_array.SetValid(true);
             // std::cerr << "Warning: " << status << std::endl;
         } else {
             m_measured_cp_array.SetValid(false);
@@ -498,27 +499,27 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // for each marker, get the data and populate corresponding tool
     for (size_t index = 0; index < count; ++index) {
-        ftkMarker * ft_tool = &(m_internals->m_tools[index]);
+        ftkMarker & ft_tool = m_internals->m_tools[index];
 
         // find the appropriate tool
-        if (m_internals->GeometryIdToTool.find(ft_tool->geometryId) == m_internals->GeometryIdToTool.end()) {
+        uint32 id = ft_tool.geometryId;
+        if (m_internals->GeometryIdToTool.find(id) == m_internals->GeometryIdToTool.end()) {
             CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id ("
-                                      << ft_tool->geometryId << ") not registered using AddTool, this marker will be ignored ("
+                                      << id << ") not registered using AddTool, this marker will be ignored ("
                                       << this->GetName() << ")" << std::endl;
         }
         else {
-            mtsAtracsysFusionTrackTool * tool = m_internals->GeometryIdToTool.at(ft_tool->geometryId);
+            mtsAtracsysFusionTrackTool * tool = m_internals->GeometryIdToTool.at(id);
             tool->m_measured_cp.SetValid(true);
-            tool->m_measured_cp.Position().Translation().Assign(ft_tool->translationMM[0] * cmn_mm,
-                                                                ft_tool->translationMM[1] * cmn_mm,
-                                                                ft_tool->translationMM[2] * cmn_mm);
+            tool->m_measured_cp.Position().Translation().Assign(ft_tool.translationMM[0] * cmn_mm,
+                                                                ft_tool.translationMM[1] * cmn_mm,
+                                                                ft_tool.translationMM[2] * cmn_mm);
             for (size_t row = 0; row < 3; ++row) {
                 for (size_t col = 0; col < 3; ++col) {
-                    tool->m_measured_cp.Position().Rotation().Element(row, col) = ft_tool->rotation[row][col];
+                    tool->m_measured_cp.Position().Rotation().Element(row, col) = ft_tool.rotation[row][col];
                 }
             }
-
-            tool->m_registration_error = ft_tool->registrationErrorMM * cmn_mm;
+            tool->m_registration_error = ft_tool.registrationErrorMM * cmn_mm;
         }
     }
 
@@ -562,9 +563,8 @@ void mtsAtracsysFusionTrack::Run(void)
                                                                    m_internals->m_stray_markers[m].positionMM.y * cmn_mm,
                                                                    m_internals->m_stray_markers[m].positionMM.z * cmn_mm);
     }
-
     // maybe this helps with error 13?
-    Sleep(50.0 * cmn_ms);
+    // Sleep(50.0 * cmn_ms);  // no needed with 4.4.1?
 }
 
 void mtsAtracsysFusionTrack::Cleanup(void)
@@ -606,10 +606,10 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     } else {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to parse geometry file \""
                                  << fileName << "\" for tool \"" << toolName << "\"" << std::endl;
-        return false;
+        exit(EXIT_FAILURE);
     }
 
-    ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_device, &geometry);
+    ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_sn, &geometry);
     if (error != ftkError::FTK_OK) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
                                  << "\" using geometry file \"" << fileName
