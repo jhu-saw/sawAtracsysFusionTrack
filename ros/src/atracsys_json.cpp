@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2021 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -25,7 +25,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
-#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
+#include <ros/ros.h>
+#include <cisst_ros_crtk/mts_ros_crtk_bridge_provided.h>
 
 #include <QApplication>
 #include <QMainWindow>
@@ -86,8 +87,8 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(tracker);
 
     // ROS CRTK bridge
-    mts_ros_crtk_bridge * crtk_bridge
-        = new mts_ros_crtk_bridge("atracsys_crtk_bridge", &rosNodeHandle);
+    mts_ros_crtk_bridge_provided * crtk_bridge
+        = new mts_ros_crtk_bridge_provided("atracsys_crtk_bridge", &rosNodeHandle);
     crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
