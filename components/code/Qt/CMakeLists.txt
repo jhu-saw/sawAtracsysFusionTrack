@@ -45,9 +45,6 @@ if (cisst_FOUND_AS_REQUIRED)
   set_property (TARGET sawAtracsysFusionTrackQt PROPERTY FOLDER "sawAtracsysFusionTrack")
   cisst_target_link_libraries (sawAtracsysFusionTrackQt ${REQUIRED_CISST_LIBRARIES})
 
-  # make sure the new library is known by the parent folder to add to the config file
-  set (sawAtracsysFusionTrackQt_LIBRARIES sawAtracsysFusionTrackQt PARENT_SCOPE)
-
 else (cisst_FOUND_AS_REQUIRED)
   message ("Information: code will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
 endif (cisst_FOUND_AS_REQUIRED)
