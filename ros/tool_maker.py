@@ -130,14 +130,25 @@ isocenter = numpy.mean(averaged_marker_poses, axis=0)
 # center coordinate system on isocenter
 points = averaged_marker_poses - isocenter
 
+# SVD for PCA
+_, sigma, Vt = numpy.linalg.svd(points, full_matrices=False)
+planar_threshold = 1e-2
+
 # Project markers to best-fit plane
 if args.planar:
-    print("Projecting markers onto plane...")
-    # Apply PCA to project data onto plane through isocenter
-    _, _, Vt = numpy.linalg.svd(points, full_matrices=False)
+    print("Planar flag enabled, projecting markers onto plane...")
     Vt[2, :] = 0 # Remove 3rd (smallest) principal componenent to collapse points to plane
-    projected_points = numpy.matmul(points, Vt.T)
-    points = projected_points
+
+planarity = sigma[2]/sigma[1]
+print(planarity)
+print(sigma)
+if args.planar and planarity > planar_threshold:
+    print("WARNING: planar flag is enabled, but markers don't appear to be planar!")
+elif not args.planar and planarity < planar_threshold:
+    print("Markers appear to be planar. If so, add '--planar' flag")
+
+# Apply PCA to align markers, and if planar to project to plane
+points = numpy.matmul(points, Vt.T)
 
 fiducials = [
     {"x": x, "y": y, "z": z}
