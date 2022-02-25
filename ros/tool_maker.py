@@ -91,7 +91,6 @@ parser.add_argument("-o", "--output", type=str, required=True, help="output file
 
 args = parser.parse_args(argv[1:])  # skip argv[0], script name
 number_of_markers = args.number_of_markers
-print("Planar: %s" % args.planar)
 
 # create the callback that will collect data
 pose_array_subscriber = rospy.Subscriber(
@@ -133,12 +132,12 @@ points = averaged_marker_poses - isocenter
 
 # Project markers to best-fit plane
 if args.planar:
-    pass # TODO
-    # # Minimizing Ax gives best-fit plane through origin (isocenter)
-    # plane = numpy.linalg.lstsq(points, numpy.zeros(len(points)), rcond=None)
-    # # Project onto plane
-    # points = points - (points*plane/numpy.dot(plane, plane))*plane
-    # transformation = numpy.array(plane, )
+    print("Projecting markers onto plane...")
+    # Apply PCA to project data onto plane through isocenter
+    _, _, Vt = numpy.linalg.svd(points, full_matrices=False)
+    Vt[2, :] = 0 # Remove 3rd (smallest) principal componenent to collapse points to plane
+    projected_points = numpy.matmul(points, Vt.T)
+    points = projected_points
 
 fiducials = [
     {"x": x, "y": y, "z": z}
@@ -153,3 +152,5 @@ data = {
 with open(args.output, "w") as f:
     json.dump(data, f, indent=4)
     f.write("\n")
+
+print("Generated tool geometry file {}".format(args.output))
