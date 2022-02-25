@@ -13,13 +13,13 @@
 
 # --- end cisst license ---
 
-import time
 import sys
 import argparse
 import rospy
 import numpy
 import json
 import scipy.spatial
+import scipy.optimize
 
 import geometry_msgs.msg
 
@@ -47,11 +47,11 @@ def pose_array_callback(msg):
         record = []
         for marker in range(number_of_markers):
             record.append(
-                [
+                (
                     msg.poses[marker].position.x,
                     msg.poses[marker].position.y,
                     msg.poses[marker].position.z,
-                ]
+                )
             )
         records.append(record)
         sys.stdout.write("\rNumber of samples collected: %i" % len(records))
@@ -114,17 +114,23 @@ if nb_records < minimum_records_required:
 # create n lists to store the pose of each marker based on distance, using the last record as reference
 reference = records[-1]
 
-# create a records with markers sorted by proximity to reference order
-sorted_records = [
-    [
-        record[scipy.spatial.distance.cdist([reference_marker], record).argmin()]
-        for reference_marker in reference
-    ]
-    for record in records
+# Find correspondence between reference and record markers that minimizes pair-wise Euclidean
+# distances, and put record markers into the same order as the corresponding markers in reference.
+ordered_records = [
+    ordered_record
+    for ordered_record in (
+        [
+            record[scipy.spatial.distance.cdist([reference_marker], record).argmin()]
+            for reference_marker in reference
+        ]
+        for record in records
+    )
+    # skip records where naive-correspondence isn't one-to-one
+    if len(set(ordered_record)) == number_of_markers
 ]
 
 # average position of each marker
-averaged_marker_poses = numpy.mean(sorted_records, axis=0)
+averaged_marker_poses = numpy.mean(ordered_records, axis=0)
 # center (average) of individual average marker positions
 isocenter = numpy.mean(averaged_marker_poses, axis=0)
 # center coordinate system on isocenter
@@ -132,6 +138,7 @@ points = averaged_marker_poses - isocenter
 
 # SVD for PCA
 _, sigma, Vt = numpy.linalg.svd(points, full_matrices=False)
+# maximium relative variance along third axis that is considerd planar
 planar_threshold = 1e-2
 
 # Project markers to best-fit plane
@@ -139,9 +146,7 @@ if args.planar:
     print("Planar flag enabled, projecting markers onto plane...")
     Vt[2, :] = 0 # Remove 3rd (smallest) principal componenent to collapse points to plane
 
-planarity = sigma[2]/sigma[1]
-print(planarity)
-print(sigma)
+planarity = sigma[2] / sigma[1]
 if args.planar and planarity > planar_threshold:
     print("WARNING: planar flag is enabled, but markers don't appear to be planar!")
 elif not args.planar and planarity < planar_threshold:
@@ -150,10 +155,7 @@ elif not args.planar and planarity < planar_threshold:
 # Apply PCA to align markers, and if planar to project to plane
 points = numpy.matmul(points, Vt.T)
 
-fiducials = [
-    {"x": x, "y": y, "z": z}
-    for [x, y, z] in points
-]
+fiducials = [{"x": x, "y": y, "z": z} for [x, y, z] in points]
 
 data = {
     "count": number_of_markers,
