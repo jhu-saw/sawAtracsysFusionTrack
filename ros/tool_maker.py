@@ -18,6 +18,7 @@ import argparse
 import rospy
 import numpy as np
 import json
+import math
 import scipy.spatial
 import scipy.optimize
 
@@ -78,6 +79,12 @@ def get_pose_data(ros_topic, expected_marker_count):
 def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
     # SVD for PCA
     _, sigma, Vt = np.linalg.svd(points, full_matrices=False)
+
+    # Orientation should be (close to) +/-1
+    basis_orientation = np.linalg.det(Vt)
+    # Select positive orientation of basis
+    if basis_orientation < 0.0:
+        Vt[2, :] = -Vt[2, :]
 
     # Project markers to best-fit plane
     if is_planar:
@@ -142,7 +149,7 @@ def write_data(points, output_file_name):
     }
 
     with open(output_file_name, "w") as f:
-        json.dump(data, f, indent=4)
+        json.dump(data, f, indent=4, sort_keys=True)
         f.write("\n")
 
     print("Generated tool geometry file {}".format(output_file_name))
