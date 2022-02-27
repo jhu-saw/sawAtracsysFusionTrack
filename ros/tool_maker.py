@@ -18,7 +18,6 @@ import argparse
 import rospy
 import numpy as np
 import json
-import math
 import scipy.spatial
 import scipy.optimize
 
@@ -32,6 +31,7 @@ if sys.version_info.major < 3:
 def get_pose_data(ros_topic, expected_marker_count):
     records = []
     collecting = False
+    reference = []
 
     def display_sample_count():
         sys.stdout.write("\rNumber of samples collected: %i" % len(records))
@@ -43,19 +43,32 @@ def get_pose_data(ros_topic, expected_marker_count):
             return
 
         # make sure the number of poses matches the number of expected markers
-        if len(msg.poses) == expected_marker_count:
-            record = []
-            for marker in range(expected_marker_count):
-                record.append(
-                    (
-                        msg.poses[marker].position.x,
-                        msg.poses[marker].position.y,
-                        msg.poses[marker].position.z,
-                    )
-                )
+        if len(msg.poses) != expected_marker_count:
+            return
 
-            records.append(record)
-            display_sample_count()
+        record = [
+            (marker.position.x, marker.position.y, marker.position.z)
+            for marker in msg.poses
+        ]
+
+        if reference == []:
+            reference.extend(record)
+
+        # each record has n poses but we don't know if they are sorted by markers
+
+        # find correspondence to reference marker that minimizes pair-wise distance and put record markers
+        # into the same order as the corresponding markers in reference.
+        ordered_record = [
+            record[scipy.spatial.distance.cdist([reference_marker], record).argmin()]
+            for reference_marker in reference
+        ]
+
+        # skip records where naive-correspondence isn't one-to-one
+        if len(set(ordered_record)) != len(reference):
+            return
+
+        records.append(ordered_record)
+        display_sample_count()
 
     pose_array_subscriber = rospy.Subscriber(
         ros_topic, geometry_msgs.msg.PoseArray, pose_array_callback
@@ -89,9 +102,8 @@ def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
     # Project markers to best-fit plane
     if is_planar:
         print("Planar flag enabled, projecting markers onto plane...")
-        Vt[
-            2, :
-        ] = 0  # Remove 3rd (smallest) principal componenent to collapse points to plane
+        # Remove 3rd (smallest) principal componenent to collapse points to plane
+        Vt[2, :] = 0
 
     planarity = sigma[2] / sigma[1]
     if is_planar and planarity > planar_threshold:
@@ -104,30 +116,9 @@ def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
     return np.matmul(points, Vt.T)
 
 
-# now the fun part, each record has n poses but we don't know if they are sorted by markers
 def process_marker_records(records, is_planar):
-    # create n lists to store the pose of each marker based on distance, using the last record as reference
-    reference = records[-1]
-
-    # Find correspondence between reference and record markers that minimizes pair-wise Euclidean
-    # distances, and put record markers into the same order as the corresponding markers in reference.
-    ordered_records = [
-        ordered_record
-        for ordered_record in (
-            [
-                record[
-                    scipy.spatial.distance.cdist([reference_marker], record).argmin()
-                ]
-                for reference_marker in reference
-            ]
-            for record in records
-        )
-        # skip records where naive-correspondence isn't one-to-one
-        if len(set(ordered_record)) == len(reference)
-    ]
-
     # average position of each marker
-    averaged_marker_poses = np.mean(ordered_records, axis=0)
+    averaged_marker_poses = np.mean(records, axis=0)
     # center (average) of individual average marker positions
     isocenter = np.mean(averaged_marker_poses, axis=0)
     # center coordinate system on isocenter
