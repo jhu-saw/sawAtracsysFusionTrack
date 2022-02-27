@@ -46,33 +46,29 @@ def get_pose_data(ros_topic, expected_marker_count):
         if len(msg.poses) != expected_marker_count:
             return
 
-        record = [
+        record = np.array([
             (marker.position.x, marker.position.y, marker.position.z)
             for marker in msg.poses
-        ]
+        ])
 
+        # use first sample as reference order
         if reference == []:
             reference.extend(record)
 
         # each record has n poses but we don't know if they are sorted by markers
-
-        # find correspondence to reference marker that minimizes pair-wise distance and put record markers
-        # into the same order as the corresponding markers in reference.
-        ordered_record = [
-            record[scipy.spatial.distance.cdist([reference_marker], record).argmin()]
-            for reference_marker in reference
-        ]
+        # find correspondence to reference marker that minimizes pair-wise distance
+        correspondence = scipy.spatial.distance.cdist(record, reference).argmin(axis=0)
 
         # skip records where naive-correspondence isn't one-to-one
-        if len(set(ordered_record)) != len(reference):
+        if len(np.unique(correspondence)) != len(reference):
             return
 
+        # put record markers into the same order as the corresponding reference markers
+        ordered_record = record[correspondence]
         records.append(ordered_record)
         display_sample_count()
 
-    pose_array_subscriber = rospy.Subscriber(
-        ros_topic, geometry_msgs.msg.PoseArray, pose_array_callback
-    )
+    pose_array_subscriber = rospy.Subscriber(ros_topic, geometry_msgs.msg.PoseArray, pose_array_callback)
 
     input("Press Enter to start collection using topic %s" % ros_topic)
     print("Collection started\nPress Enter to stop")
@@ -162,7 +158,7 @@ if __name__ == "__main__":
         "--topic",
         type=str,
         required=True,
-        help="topic to use to receive PoseArray without namespace.  Use __ns:= to specify the namespace",
+        help="topic to use to receive PoseArray without namespace. Use __ns:= to specify the namespace",
     )
     parser.add_argument(
         "-n",
@@ -170,7 +166,7 @@ if __name__ == "__main__":
         type=int,
         choices=range(3, 10),
         required=True,
-        help="number of markers on the tool.  This will use to filter messages with incorrect number of markers",
+        help="number of markers on the tool. Used to filter messages with incorrect number of markers",
     )
     parser.add_argument(
         "-p",
