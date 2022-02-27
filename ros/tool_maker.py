@@ -129,7 +129,7 @@ def process_marker_records(records, is_planar):
     return points
 
 
-def write_data(points, output_file_name):
+def write_data(points, id, output_file_name):
     fiducials = [{"x": x, "y": y, "z": z} for [x, y, z] in points]
     origin = {"x": 0.0, "y": 0.0, "z": 0.0}
 
@@ -138,6 +138,9 @@ def write_data(points, output_file_name):
         "fiducials": fiducials,
         "pivot": origin,
     }
+
+    if id is not None:
+        data["id"] = id
 
     with open(output_file_name, "w") as f:
         json.dump(data, f, indent=4, sort_keys=True)
@@ -176,6 +179,9 @@ if __name__ == "__main__":
         help="indicates all markers lie in a plane",
     )
     parser.add_argument(
+        "-i", "--id", type=int, required=False, help="specify optional id"
+    )
+    parser.add_argument(
         "-o", "--output", type=str, required=True, help="output file name"
     )
 
@@ -190,4 +196,4 @@ if __name__ == "__main__":
         sys.exit("Not enough records ({} minimum)".format(minimum_records_required))
 
     points = process_marker_records(records, args.planar)
-    write_data(points, args.output)
+    write_data(points, args.id, args.output)
