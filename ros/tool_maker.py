@@ -13,99 +13,229 @@
 
 # --- end cisst license ---
 
-import time
 import sys
 import argparse
 import rospy
-import numpy
+import numpy as np
+import json
 import scipy.spatial
+import scipy.optimize
 
 import geometry_msgs.msg
-
-# using global variables to communicate with callback thread
-collecting = False
-number_of_markers = 0
-records = []
 
 if sys.version_info.major < 3:
     input = raw_input
 
-def pose_array_callback(msg):
-    global records
-    # do something only if we are recording
-    if collecting:
+
+# create subscription with callback to handle marker messages
+def get_pose_data(ros_topic, expected_marker_count):
+    records = []
+    collecting = False
+    reference = []
+
+    def display_sample_count():
+        sys.stdout.write("\rNumber of samples collected: %i" % len(records))
+        sys.stdout.flush()
+
+    def pose_array_callback(msg):
+        # skip if not recording marker pose messages
+        if not collecting:
+            return
+
         # make sure the number of poses matches the number of expected markers
-        if (len(msg.poses) == number_of_markers):
-            record = []
-            for marker in range(number_of_markers):
-                record.append([msg.poses[marker].position.x,
-                               msg.poses[marker].position.y,
-                               msg.poses[marker].position.z])
-            records.append(record)
-            sys.stdout.write('\rNumber of samples collected: %i' % len(records))
-            sys.stdout.flush()
+        if len(msg.poses) != expected_marker_count:
+            return
 
-# ros init node so we can use default ros arguments (e.g. __ns:= for namespace)
-rospy.init_node('tool_maker', anonymous=True)
-# strip ros arguments
-argv = rospy.myargv(argv=sys.argv)
+        record = np.array([
+            (marker.position.x, marker.position.y, marker.position.z)
+            for marker in msg.poses
+        ])
 
-# parse arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('-t', '--topic', type = str, required = True,
-                    help = 'topic to use to receive PoseArray without namespace.  Use __ns:= to specify the namespace')
-parser.add_argument('-n', '--number-of-markers', type = int, choices = range(3, 10), required = True,
-                    help = 'number of markers on the tool.  This will use to filter messages with incorrect number of markers')
+        # use first sample as reference order
+        if reference == []:
+            reference.extend(record)
 
-args = parser.parse_args(argv[1:]) # skip argv[0], script name
+        # each record has n poses but we don't know if they are sorted by markers
+        # find correspondence to reference marker that minimizes pair-wise distance
+        correspondence = scipy.spatial.distance.cdist(record, reference).argmin(axis=0)
 
-# create the callback that will collect data
-pose_array_subscriber = rospy.Subscriber(args.topic,
-                                         geometry_msgs.msg.PoseArray,
-                                         pose_array_callback)
+        # skip records where naive-correspondence isn't one-to-one
+        if len(np.unique(correspondence)) != len(reference):
+            return
 
-number_of_markers = args.number_of_markers
+        # put record markers into the same order as the corresponding reference markers
+        ordered_record = record[correspondence]
+        records.append(ordered_record)
+        display_sample_count()
 
-input("Press Enter to start collection using topic %s" % args.topic)
-print("Collection started\nPress Enter to stop")
-collecting = True
+    pose_array_subscriber = rospy.Subscriber(ros_topic, geometry_msgs.msg.PoseArray, pose_array_callback)
 
-input("")
-collecting = False
+    input("Press Enter to start collection using topic %s" % ros_topic)
+    print("Collection started\nPress Enter to stop")
+    display_sample_count()
+    collecting = True
 
-nb_records = len(records)
+    input("")
+    collecting = False
+    pose_array_subscriber.unregister()
 
-if nb_records < 10:
-     sys.exit("Not enough records (10 minimum)") # this is totally arbitrary
-
-# now the fun part, each record has n poses but we don't know if they are sorted by markers
-
-# create n lists to store the pose of each marker based on distance, using the last record as reference
-reference = records.pop()
-
-# create a records with markers sorted by proximity to reference order
-sorted_records = []
-sorted_records.append(reference)
-
-# iterate through rest of list
-for record in records:
-    correspondence = [] # index of closest reference
-    # find correspondence
-    for marker in record:
-        # find closest reference
-        min = 100000.0 # arbitrary high
-        closest_reference = -1
-        for index_reference in range(0, len(reference)):
-            distance = scipy.spatial.distance.euclidean(marker, reference[index_reference])
-            if distance < min:
-                min = distance
-                closest_to_reference = index_reference
-        correspondence.append(closest_to_reference)
-    # create sorted record
-    sorted_record = record # just to make sure we have the correct size
-    for index in correspondence:
-        sorted_record[correspondence[index]] = record[index]
-    sorted_records.append(sorted_record)
+    return records
 
 
-print("------------- to do, compute sum/average for each value, then isocenter and finally subtract isocenter, then create ini or json file")
+# Apply PCA to align markers, and if is_planar to project to plane.
+# Points data should have mean zero (i.e. be centered at origin).
+# planar_threshold is maximium relative variance along third axis that is considerd planar
+def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
+    # SVD for PCA
+    _, sigma, Vt = np.linalg.svd(points, full_matrices=False)
+
+    # Orientation should be (close to) +/-1
+    basis_orientation = np.linalg.det(Vt)
+    # Select positive orientation of basis
+    if basis_orientation < 0.0:
+        Vt[2, :] = -Vt[2, :]
+
+    # Project markers to best-fit plane
+    if is_planar:
+        print("Planar flag enabled, projecting markers onto plane...")
+        # Remove 3rd (smallest) principal componenent to collapse points to plane
+        Vt[2, :] = 0
+
+    planarity = sigma[2] / sigma[1]
+    if is_planar and planarity > planar_threshold:
+        print("WARNING: planar flag is enabled, but markers don't appear to be planar!")
+    elif not is_planar and planarity < planar_threshold:
+        print(
+            "Markers appear to be planar. If so, add '--planar' flag for better results"
+        )
+
+    return np.matmul(points, Vt.T)
+
+
+def process_marker_records(records, is_planar):
+    # average position of each marker
+    averaged_marker_poses = np.mean(records, axis=0)
+    # center (average) of individual average marker positions
+    isocenter = np.mean(averaged_marker_poses, axis=0)
+    # center coordinate system on isocenter
+    points = averaged_marker_poses - isocenter
+    # align using PCA and project to plane is is_planar flag is set
+    points = principal_component_analysis(points, is_planar)
+
+    return points
+
+
+def convert_units(marker_points, input_units, output_units):
+    units = {
+        "mm": 0.001,
+        "cm": 0.01,
+        "m": 1.0,
+    }
+
+    if input_units == "auto":
+        distances = scipy.spatial.distance.cdist(points, points)
+        average_distance = np.mean(distances)
+        if average_distance >= 5:
+            input_units = "mm"
+        else:
+            input_units = "m"
+        print("Auto-detected input units of meters")
+
+    if input_units == output_units:
+        return marker_points
+
+    print("Converting units from {} to {}".format(input_units, output_units))
+    return marker_points * units[input_units] / units[output_units]
+
+
+def write_data(points, id, output_file_name):
+    fiducials = [{"x": x, "y": y, "z": z} for [x, y, z] in points]
+    origin = {"x": 0.0, "y": 0.0, "z": 0.0}
+
+    data = {
+        "count": len(fiducials),
+        "fiducials": fiducials,
+        "pivot": origin,
+    }
+
+    if id is not None:
+        data["id"] = id
+
+    with open(output_file_name, "w") as f:
+        json.dump(data, f, indent=4, sort_keys=True)
+        f.write("\n")
+
+    print("Generated tool geometry file {}".format(output_file_name))
+
+
+if __name__ == "__main__":
+    # ros init node so we can use default ros arguments (e.g. __ns:= for namespace)
+    rospy.init_node("tool_maker", anonymous=True)
+    # strip ros arguments
+    argv = rospy.myargv(argv=sys.argv)
+
+    # parse arguments
+    parser = argparse.ArgumentParser()
+
+    # required arguments
+    parser.add_argument(
+        "-t",
+        "--topic",
+        type=str,
+        required=True,
+        help="topic to use to receive PoseArray without namespace. Use __ns:= to specify the namespace",
+    )
+    parser.add_argument(
+        "-n",
+        "--number-of-markers",
+        type=int,
+        choices=range(3, 10),
+        required=True,
+        help="number of markers on the tool. Used to filter messages with incorrect number of markers",
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, required=True, help="output file name"
+    )
+
+    # optional arguments
+    parser.add_argument(
+        "-p",
+        "--planar",
+        action="store_true",
+        help="indicates all markers lie in a plane",
+    )
+    parser.add_argument(
+        "-i", "--id", type=int, required=False, help="specify optional id"
+    )
+    parser.add_argument(
+        "-iu",
+        "--input-units",
+        type=str,
+        choices=["auto", "mm", "cm", "m"],
+        default="auto",
+        required=False,
+        help="units of input data",
+    )
+    parser.add_argument(
+        "-ou",
+        "--output-units",
+        type=str,
+        choices=["mm", "cm", "m"],
+        default="mm",
+        required=False,
+        help="units of output data",
+    )
+
+    args = parser.parse_args(argv[1:])  # skip argv[0], script name
+
+    # Arbitrary number to make sure we have enough records to average out noise etc.
+    minimum_records_required = 10
+
+    # create the callback that will collect data
+    records = get_pose_data(args.topic, args.number_of_markers)
+    if len(records) < minimum_records_required:
+        sys.exit("Not enough records ({} minimum)".format(minimum_records_required))
+
+    points = process_marker_records(records, args.planar)
+    points = convert_units(points, args.input_units, args.output_units)
+    write_data(points, args.id, args.output)
