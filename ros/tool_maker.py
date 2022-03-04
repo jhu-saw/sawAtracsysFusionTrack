@@ -95,6 +95,10 @@ def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
     if basis_orientation < 0.0:
         Vt[2, :] = -Vt[2, :]
 
+    # Three markers will always be planar, so we can ignore minor computation errors
+    marker_count = np.size(is_planar)
+    is_planar = is_planar or marker_count == 3
+
     # Project markers to best-fit plane
     if is_planar:
         print("Planar flag enabled, projecting markers onto plane...")
