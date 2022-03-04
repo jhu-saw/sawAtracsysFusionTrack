@@ -1,4 +1,4 @@
-# (C) Copyright 2021 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2021-2022 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -66,4 +66,23 @@ if (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)
     set (AtracsysSDK_LIBRARIES ${AtracsysSDK_LIBRARIES} ${LIBRARY_device} pthread rt)
     unset(LIBRARY_device)
   endif (UNIX)
+
+  # Test what SDK supports
+  set (CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES};${AtracsysSDK_INCLUDE_DIR}")
+  include (CheckCXXSourceCompiles)
+  # Check for FTK_OK
+  unset (AtracsysSDK_HAS_FTK_OK CACHE)
+  check_cxx_source_compiles ("
+    #include <ftkInterface.h>
+    int main(void) {
+      static ftkError _error = FTK_OK;
+    }" AtracsysSDK_HAS_FTK_OK)
+  # Check for QS_OK
+  unset (AtracsysSDK_HAS_QS_OK CACHE)
+  check_cxx_source_compiles ("
+    #include <ftkInterface.h>
+    int main(void) {
+      static ftkQueryStatus _status = QS_OK;
+    }" AtracsysSDK_HAS_QS_OK)
+
 endif (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)

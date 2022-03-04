@@ -20,6 +20,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnUnits.h>
 #include <cisstMultiTask/mtsInterfaceProvided.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+#include <sawAtracsysFusionTrack/sawAtracsysFusionTrackConfig.h>
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 
@@ -242,7 +243,7 @@ public:
                                         // 0u, 16u,
                                         number_of_stray_markers, number_of_tools,
                                         m_frame_query));
-        if (err != ftkError::FTK_OK) {
+        if (err != FTK_ERROR_NS::FTK_OK) {
             CMN_LOG_INIT_ERROR << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions failed" << std::endl;
         } else {
             CMN_LOG_INIT_VERBOSE << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions ok" << std::endl;
@@ -311,10 +312,10 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     CMN_LOG_CLASS_INIT_VERBOSE << "Atracsys SDK Version " << buffer.data << std::endl;
 
 #if 0
-    if (ftkEnumerateOptions(m_internals->m_library, 0LL, OptionEnumerator, NULL) != FTK_OK)
+    if (ftkEnumerateOptions(m_internals->m_library, 0LL, OptionEnumerator, NULL) != SDK_FTK_OK)
         CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to enumerate Atracsys options" << std::endl;
 
-    if (ftkGetData(m_internals->m_library, 0LL, FTK_OPT_DRIVER_VER, &buffer) != FTK_OK)
+    if (ftkGetData(m_internals->m_library, 0LL, FTK_OPT_DRIVER_VER, &buffer) != SDK_FTK_OK)
         CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to get Atracsys Driver version" << std::endl;
 #endif
 
@@ -331,7 +332,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         ftkError error = ftkEnumerateDevices(m_internals->m_library,
                                              mtsAtracsysFusionTrackDeviceEnum,
                                              &(m_internals->m_sn));
-        if (error != ftkError::FTK_OK) {
+        if (error != FTK_ERROR_NS::FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
                                      << this->GetName() << ")" << std::endl;
             ftkClose(&m_internals->m_library);
@@ -373,7 +374,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     // FTK_OPT_DATA_DIR is defined in SDK 3.0.1, but not in SDK 4.5.2
     // add FTK path too
     if ((ftkGetData(m_internals->m_library, m_internals->m_sn,
-                    FTK_OPT_DATA_DIR, &buffer ) == ftkError::FTK_OK) && (buffer.size > 0)) {
+                    FTK_OPT_DATA_DIR, &buffer ) == FTK_ERROR_NS::FTK_OK) && (buffer.size > 0)) {
         std::string ftkPath(reinterpret_cast<char*>(buffer.data));
         configPath.Add(ftkPath);
     }
@@ -456,7 +457,7 @@ void mtsAtracsysFusionTrack::Run(void)
                                       100u);
     // negative error codes are warnings
     m_measured_cp_array.SetValid(true);
-    if (status != ftkError::FTK_OK) {
+    if (status != FTK_ERROR_NS::FTK_OK) {
         if (static_cast<int>(status) < 0) {
             // std::cerr << "Warning: " << status << std::endl;
         } else {
@@ -468,16 +469,16 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // check results of last frame
     switch (m_internals->m_frame_query->markersStat) {
-    case ftkQueryStatus::QS_WAR_SKIPPED:
+    case FTK_QS_NS::QS_WAR_SKIPPED:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
         break;
-    case ftkQueryStatus::QS_ERR_INVALID_RESERVED_SIZE:
+    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
         break;
     default:
         // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
-    case ftkQueryStatus::QS_OK:
+    case FTK_QS_NS::QS_OK:
         break;
     }
 
@@ -530,16 +531,16 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // ---- 3D Fiducials, aka stray markers ---
     switch (m_internals->m_frame_query->threeDFiducialsStat) {
-    case ftkQueryStatus::QS_WAR_SKIPPED:
+    case FTK_QS_NS::QS_WAR_SKIPPED:
         CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
         break;
-    case ftkQueryStatus::QS_ERR_INVALID_RESERVED_SIZE:
+    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
         break;
     default:
         CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
-    case ftkQueryStatus::QS_OK:
+    case FTK_QS_NS::QS_OK:
         break;
     }
 
@@ -610,7 +611,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     }
 
     ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_sn, &geometry);
-    if (error != ftkError::FTK_OK) {
+    if (error != FTK_ERROR_NS::FTK_OK) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
                                  << "\" using geometry file \"" << fileName
                                  << "\" (" << this->GetName() << ")" << std::endl;
