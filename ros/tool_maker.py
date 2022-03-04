@@ -101,7 +101,7 @@ def principal_component_analysis(points, is_planar, planar_threshold=1e-2):
 
     # Project markers to best-fit plane
     if is_planar:
-        print("Planar flag enabled, projecting markers onto plane...")
+        print("Planar flag enabled, projecting markers onto plane")
         # Remove 3rd (smallest) principal componenent to collapse points to plane
         Vt[2, :] = 0
 
@@ -129,27 +129,18 @@ def process_marker_records(records, is_planar):
     return points
 
 
-def convert_units(marker_points, input_units, output_units):
-    units = {
-        "mm": 0.001,
-        "cm": 0.01,
-        "m": 1.0,
-    }
+supported_units = {
+    "mm": 0.001,
+    "cm": 0.01,
+    "m": 1.0,
+}
 
-    if input_units == "auto":
-        distances = scipy.spatial.distance.cdist(points, points)
-        average_distance = np.mean(distances)
-        if average_distance >= 5:
-            input_units = "mm"
-        else:
-            input_units = "m"
-        print("Auto-detected input units of meters")
-
-    if input_units == output_units:
-        return marker_points
+def convert_units(marker_points, output_units):
+    # Input is always in meters
+    input_units = "m"
 
     print("Converting units from {} to {}".format(input_units, output_units))
-    return marker_points * units[input_units] / units[output_units]
+    return marker_points * supported_units[input_units] / supported_units[output_units]
 
 
 def write_data(points, id, output_file_name):
@@ -209,25 +200,16 @@ if __name__ == "__main__":
         help="indicates all markers lie in a plane",
     )
     parser.add_argument(
-        "-i", "--id", type=int, required=False, help="specify optional id"
-    )
-    parser.add_argument(
-        "-iu",
-        "--input-units",
+        "-u",
+        "--units",
         type=str,
-        choices=["auto", "mm", "cm", "m"],
-        default="auto",
-        required=False,
-        help="units of input data",
-    )
-    parser.add_argument(
-        "-ou",
-        "--output-units",
-        type=str,
-        choices=["mm", "cm", "m"],
+        choices=supported_units.keys(),
         default="mm",
         required=False,
-        help="units of output data",
+        help="units to use for output data in config",
+    )
+    parser.add_argument(
+        "-i", "--id", type=int, required=False, help="specify optional id"
     )
 
     args = parser.parse_args(argv[1:])  # skip argv[0], script name
@@ -241,5 +223,5 @@ if __name__ == "__main__":
         sys.exit("Not enough records ({} minimum)".format(minimum_records_required))
 
     points = process_marker_records(records, args.planar)
-    points = convert_units(points, args.input_units, args.output_units)
+    points = convert_units(points, args.units)
     write_data(points, args.id, args.output)
