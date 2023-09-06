@@ -64,7 +64,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
     link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
 
-    add_executable (atracsys_json src/atracsys_json.cpp)
+    add_executable (atracsys_json src/atracsys_json.cpp src/mts_ros_crtk_atracsys_bridge.cpp src/mts_ros_crtk_atracsys_bridge.h)
     target_link_libraries (atracsys_json
                            ${sawAtracsysFusionTrack_LIBRARIES}
                            ${catkin_LIBRARIES})

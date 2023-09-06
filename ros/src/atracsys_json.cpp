@@ -26,7 +26,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 #include <ros/ros.h>
-#include <cisst_ros_crtk/mts_ros_crtk_bridge_provided.h>
+#include "mts_ros_crtk_atracsys_bridge.h"
 
 #include <QApplication>
 #include <QMainWindow>
@@ -87,9 +87,16 @@ int main(int argc, char * argv[])
     componentManager->AddComponent(tracker);
 
     // ROS CRTK bridge
-    mts_ros_crtk_bridge_provided * crtk_bridge
-        = new mts_ros_crtk_bridge_provided("atracsys_crtk_bridge", &rosNodeHandle);
+    mts_ros_crtk_atracsys_bridge * crtk_bridge
+        = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", &rosNodeHandle);
     crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
+
+    auto num_tools = tracker->GetNumberOfTools();
+    for (size_t i = 0; i < num_tools; ++i) {
+        crtk_bridge->bridge_tool_error("atracsys",tracker->GetToolName(i), rosPeriod, tfPeriod);
+    }
+    // crtk_bridge->bridge("atracsys", "Controller", rosPeriod, tfPeriod)
+
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
 
