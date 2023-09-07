@@ -538,7 +538,7 @@ void mtsAtracsysFusionTrack::Run(void)
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
         break;
     default:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl; 
         break;
     case FTK_QS_NS::QS_OK:
         break;
