@@ -68,7 +68,7 @@ int main(int argc, char * argv[])
 
     // check that all required options have been provided
     std::string errorMessage;
-    if (!options.Parse(argc, argv, std::cerr)) {
+    if (!options.Parse(ral.stripped_arguments(), std::cerr)) {
         return -1;
     }
     std::string arguments;

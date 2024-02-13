@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2016 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -22,7 +22,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #include <cisstVector/vctForwardDeclarationsQt.h>
 #include <cisstMultiTask/mtsComponent.h>
-#include <cisstMultiTask/mtsQtWidgetIntervalStatistics.h>
+#include <cisstMultiTask/mtsIntervalStatisticsQtWidget.h>
 
 #include <QWidget>
 #include <QLabel>
@@ -66,7 +66,7 @@ private:
 
     // Timing
     mtsIntervalStatistics IntervalStatistics;
-    mtsQtWidgetIntervalStatistics * QMIntervalStatistics;
+    mtsIntervalStatisticsQtWidget * QMIntervalStatistics;
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrackStrayMarkersQtWidget);

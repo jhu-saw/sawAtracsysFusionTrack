@@ -22,7 +22,6 @@ http://www.cisst.org/cisst/license.txt.
 // cisst
 #include "mts_ros_crtk_atracsys_bridge.h"
 #include <cisst_ros_bridge/mtsROSBridge.h>
-#include <std_msgs/Float64.h>
 
 CMN_IMPLEMENT_SERVICES(mts_ros_crtk_atracsys_bridge);
 
@@ -77,7 +76,7 @@ void mts_ros_crtk_atracsys_bridge::bridge_tool_error(const std::string & _compon
     const std::string _required_interface_name = _component_name + "_using_" + _interface_name;
 
     // non CRTK topics
-    m_subscribers_bridge->AddPublisherFromCommandRead<double, std_msgs::Float64>
+    m_subscribers_bridge->AddPublisherFromCommandRead<double, CISST_RAL_MSG(std_msgs, Float64)>
         (_required_interface_name, "registration_error", _component_name + "/" + _interface_name + "/registration_error");
 
     m_connections.Add(m_subscribers_bridge->GetName(), _required_interface_name,

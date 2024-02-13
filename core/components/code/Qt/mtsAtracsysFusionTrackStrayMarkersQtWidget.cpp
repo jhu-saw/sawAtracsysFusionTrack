@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -100,7 +100,7 @@ void mtsAtracsysFusionTrackStrayMarkersQtWidget::setupUi(void)
     QVBoxLayout * mainLayout = new QVBoxLayout;
 
     // Timing
-    QMIntervalStatistics = new mtsQtWidgetIntervalStatistics();
+    QMIntervalStatistics = new mtsIntervalStatisticsQtWidget();
     mainLayout->addWidget(QMIntervalStatistics);
 
     // 3D display of markers
