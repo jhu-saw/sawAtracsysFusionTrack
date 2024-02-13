@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2017-11-28
 
-  (C) Copyright 2017-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2017-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -26,15 +26,14 @@ http://www.cisst.org/cisst/license.txt.
 
 CMN_IMPLEMENT_SERVICES(mts_ros_crtk_atracsys_bridge);
 
-
 void mts_ros_crtk_atracsys_bridge::bridge(const std::string & _component_name,
-                                     const std::string & _interface_name,
-                                     const double _publish_period_in_seconds,
-                                     const double _tf_period_in_seconds)
+                                          const std::string & _interface_name,
+                                          const double _publish_period_in_seconds,
+                                          const double _tf_period_in_seconds)
 {
     // clean ROS namespace
     std::string _clean_namespace = _component_name;
-    cisst_ros_crtk::clean_namespace(_clean_namespace);
+    cisst_ral::clean_namespace(_clean_namespace);
 
     // create factory to bridge tool as they get created
     this->add_factory_source(_component_name,
@@ -65,15 +64,11 @@ void mts_ros_crtk_atracsys_bridge::bridge(const std::string & _component_name,
 }
 
 void mts_ros_crtk_atracsys_bridge::bridge_tool_error(const std::string & _component_name,
-                                     const std::string & _interface_name,
-                                     const double _publish_period_in_seconds,
-                                     const double _tf_period_in_seconds)
+                                                     const std::string & _interface_name)
 {
     std::string _clean_namespace = _component_name;
-    cisst_ros_crtk::clean_namespace(_clean_namespace);
+    cisst_ral::clean_namespace(_clean_namespace);
 
-
-    
     // add trailing / for clean namespace
     if (!_clean_namespace.empty()) {
         _clean_namespace.append("/");
@@ -87,6 +82,4 @@ void mts_ros_crtk_atracsys_bridge::bridge_tool_error(const std::string & _compon
 
     m_connections.Add(m_subscribers_bridge->GetName(), _required_interface_name,
                       _component_name, _interface_name);
-
-    
 }

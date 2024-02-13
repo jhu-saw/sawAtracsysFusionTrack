@@ -65,13 +65,13 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
       defined by a "name" and an "ini-file" or "json-file".  The path
       for the ini/json geometry file can be either absolute or
       relative to the application's working directory. */
-    void Configure(const std::string & filename = "");
+    void Configure(const std::string & filename = "") override;
 
-    void Startup(void);
+    void Startup(void) override;
 
-    void Run(void);
+    void Run(void) override;
 
-    void Cleanup(void);
+    void Cleanup(void) override;
 
     /*! Create a tool using the tool geometry file.  By default,
       Atracsys provides .ini files but we also support .json. */
@@ -101,15 +101,21 @@ protected:
     /*! Code called by all constructors. */
     void Init(void);
 
+    /*! Search path for configuration files */
+    cmnPath m_path;
+    
     /*! State table for configuration */
     mtsStateTable m_configuration_state_table;
 
-    mtsAtracsysFusionTrackInternals * m_internals;
+    /*! Controller interface */
+    mtsInterfaceProvided * m_controller_interface = nullptr;
+    
+    mtsAtracsysFusionTrackInternals * m_internals = nullptr;
     typedef std::map<std::string, mtsAtracsysFusionTrackTool *> ToolsType;
     ToolsType m_tools;
 
     /*! Number of stray markers to track */
-    size_t m_stray_markers_max;
+    size_t m_stray_markers_max = 0;
 
     prmPositionCartesianArrayGet m_measured_cp_array;
 

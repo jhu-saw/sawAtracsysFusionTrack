@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2021 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -25,7 +25,6 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
-#include <ros/ros.h>
 #include "mts_ros_crtk_atracsys_bridge.h"
 
 #include <QApplication>
@@ -42,8 +41,8 @@ int main(int argc, char * argv[])
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
-    ros::init(argc, argv, "atracsys", ros::init_options::AnonymousName);
-    ros::NodeHandle rosNodeHandle;
+    cisst_ral::ral ral(argc, argv, "atracsys");
+    auto rosNode = ral.node();
 
     // parse options
     cmnCommandLineOptions options;
@@ -69,9 +68,7 @@ int main(int argc, char * argv[])
 
     // check that all required options have been provided
     std::string errorMessage;
-    if (!options.Parse(argc, argv, errorMessage)) {
-        std::cerr << "Error: " << errorMessage << std::endl;
-        options.PrintUsage(std::cerr);
+    if (!options.Parse(argc, argv, std::cerr)) {
         return -1;
     }
     std::string arguments;
@@ -88,14 +85,13 @@ int main(int argc, char * argv[])
 
     // ROS CRTK bridge
     mts_ros_crtk_atracsys_bridge * crtk_bridge
-        = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", &rosNodeHandle);
+        = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", rosNode);
     crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
 
     auto num_tools = tracker->GetNumberOfTools();
     for (size_t i = 0; i < num_tools; ++i) {
-        crtk_bridge->bridge_tool_error("atracsys",tracker->GetToolName(i), rosPeriod, tfPeriod);
+        crtk_bridge->bridge_tool_error("atracsys", tracker->GetToolName(i));
     }
-    // crtk_bridge->bridge("atracsys", "Controller", rosPeriod, tfPeriod)
 
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
@@ -142,11 +138,15 @@ int main(int argc, char * argv[])
     tabWidget->show();
     application.exec();
 
+    // stop all logs
+    cmnLogger::Kill();
+
+    // stop ROS node
+    cisst_ral::shutdown();
+
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);
     componentManager->Cleanup();
-
-    cmnLogger::Kill();
 
     return 0;
 }

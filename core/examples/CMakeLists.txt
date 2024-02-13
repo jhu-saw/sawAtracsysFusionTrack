@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2014-2023 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -10,23 +10,19 @@
 # --- end cisst license ---
 
 cmake_minimum_required (VERSION 3.10)
-project (sawAtracsysFusionTrackExamples VERSION 1.0.0)
-
-set (CMAKE_CXX_STANDARD 14)
-set (CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_CXX_EXTENSIONS OFF)
+project (sawAtracsysFusionTrackExamples VERSION 1.1.0)
 
 # create a list of required cisst libraries
 set (REQUIRED_CISST_LIBRARIES
-     cisstCommon
-     cisstCommonQt
-     cisstVector
-     cisstVectorQt
-     cisstOSAbstraction
-     cisstMultiTask
-     cisstMultiTaskQt
-     cisstParameterTypes
-     cisstParameterTypesQt)
+  cisstCommon
+  cisstCommonQt
+  cisstVector
+  cisstVectorQt
+  cisstOSAbstraction
+  cisstMultiTask
+  cisstMultiTaskQt
+  cisstParameterTypes
+  cisstParameterTypesQt)
 
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
@@ -37,10 +33,7 @@ if (cisst_FOUND_AS_REQUIRED)
   include (${CISST_USE_FILE})
 
   # catkin/ROS paths
-  cisst_is_catkin_build (sawAtracsysFusionTrackExamples_IS_CATKIN_BUILT)
-  if (sawAtracsysFusionTrackExamples_IS_CATKIN_BUILT)
-    set (EXECUTABLE_OUTPUT_PATH "${CATKIN_DEVEL_PREFIX}/bin")
-  endif ()
+  cisst_set_output_path ()
 
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
   find_package (sawAtracsysFusionTrack)
@@ -60,10 +53,10 @@ if (cisst_FOUND_AS_REQUIRED)
 
     # link against non cisst libraries and saw components
     target_link_libraries (sawAtracsysFusionTrackQtExample
-                           ${sawAtracsysFusionTrack_LIBRARIES}
-                           ${sawAtracsysFusionTrackQt_LIBRARIES}
-                           ${QT_LIBRARIES}
-                           )
+      ${sawAtracsysFusionTrack_LIBRARIES}
+      ${sawAtracsysFusionTrackQt_LIBRARIES}
+      ${QT_LIBRARIES}
+      )
 
     # link against cisst libraries (and dependencies)
     cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})

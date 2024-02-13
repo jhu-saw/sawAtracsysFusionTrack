@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2021-12-21
 
-  (C) Copyright 2021 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2021-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -38,5 +38,7 @@ http://www.cisst.org/cisst/license.txt.
 #else
 #define FTK_QS_NS ftkQueryStatus
 #endif
+
+#define sawAtracsysFusionTrack_SOURCE_DIR "@sawAtracsysFusionTrack_SOURCE_DIR@"
 
 #endif // _sawAtracsysFusionTrackConfig_h

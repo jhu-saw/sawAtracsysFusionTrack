@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-21
 
-  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -15,7 +15,6 @@ http://www.cisst.org/cisst/license.txt.
 
 --- end cisst license ---
 */
-
 
 #include <cisstCommon/cmnPath.h>
 #include <cisstCommon/cmnUnits.h>
@@ -55,9 +54,7 @@ int main(int argc, char * argv[])
 
     // check that all required options have been provided
     std::string errorMessage;
-    if (!options.Parse(argc, argv, errorMessage)) {
-        std::cerr << "Error: " << errorMessage << std::endl;
-        options.PrintUsage(std::cerr);
+    if (!options.Parse(argc, argv, std::cerr)) {
         return -1;
     }
     std::string arguments;
@@ -114,11 +111,12 @@ int main(int argc, char * argv[])
     tabWidget->show();
     application.exec();
 
+    // stop all logs
+    cmnLogger::Kill();
+
     // kill all components and perform cleanup
     componentManager->KillAllAndWait(5.0 * cmn_s);
     componentManager->Cleanup();
-
-    cmnLogger::Kill();
 
     return 0;
 }

@@ -27,23 +27,21 @@ class mts_ros_crtk_atracsys_bridge: public mts_ros_crtk_bridge
 
  public:
     inline mts_ros_crtk_atracsys_bridge(const std::string & _component_name,
-                                   ros::NodeHandle * _node_handle,
-                                   const double _period_in_seconds = 5.0 * cmn_ms):
+                                        cisst_ral::node_ptr_t _node_handle,
+                                        const double _period_in_seconds = 5.0 * cmn_ms):
         mts_ros_crtk_bridge(_component_name, _node_handle, _period_in_seconds)
     {}
 
     inline ~mts_ros_crtk_atracsys_bridge() {}
 
-    /*! Everything needed to bridge the sawatracsysTracker component */
+    /*! Everything needed to bridge the sawAtracsysTracker component */
     void bridge(const std::string & _component_name,
                 const std::string & _interface_name,
                 const double _publish_period_in_seconds,
                 const double _tf_period_in_seconds);
 
     void bridge_tool_error(const std::string & _component_name,
-                                     const std::string & _interface_name,
-                                     const double _publish_period_in_seconds,
-                                     const double _tf_period_in_seconds);
+                           const std::string & _interface_name);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mts_ros_crtk_atracsys_bridge);

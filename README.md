@@ -6,7 +6,10 @@ SAW wrapper for Atracsys FusionTrack optical tracker
 
 ## Firmware and SDK revision
 
-As of August 2020, the SDKs provided by Atracsys are NOT backward compatible nor are the firmwares.  So, the SDK version you must download and use depends on the hardware/firmware you have.  The Atracsys web site has compatibility tables.
+As of August 2020, the SDKs provided by Atracsys are NOT backward
+compatible nor are the firmwares.  So, the SDK version you must
+download and use depends on the hardware/firmware you have.  The
+Atracsys web site has compatibility tables.
 
 At JHU, our oldest device has:
 * hardware: 2.0.2.32
@@ -15,7 +18,12 @@ At JHU, our oldest device has:
 
 ## Network
 
-The default IP for the Atracsys is 172.17.1.7.   The vendor recommends configuring your network interface using 172.17.1.100, netmask 255.255.255.0 and no gateway.  We found that USB network adaptors are not great so if you can use a proper PCIe network adaptor, that's better.  For the network cables, make sure you have good quality CAT 6 cables.
+The default IP for the Atracsys is 172.17.1.7.  The vendor recommends
+configuring your network interface using 172.17.1.100, netmask
+255.255.255.0 and no gateway.  We found that USB network adaptors are
+not great so if you can use a proper PCIe network adaptor, that's
+better.  For the network cables, make sure you have good quality CAT 6
+cables.
 
 Also make sure your network interface is configured with MTU set to 9000.
 * Ubuntu: use `sudo nm-connection-editor` to set the MTU.
@@ -23,9 +31,18 @@ Also make sure your network interface is configured with MTU set to 9000.
 
 ## Linux with ROS/Catkin build tools
 
-We would strongly recommend to build the code using the ROS 1 tools.   You would need to first install ROS 1 using instructions from www.ros.org.  Assuming you’re using Ubuntu 16.04, 18.04 or 20.04, this is pretty easy.  On Ubuntu 18.04 and above, we also recommend to install `libiniparser` using `sudo apt install libiniparser-dev`.
+We would strongly recommend to build the code using the ROS 1 tools.
+You would need to first install ROS 1 using instructions from
+www.ros.org.  Assuming you’re using Ubuntu 16.04, 18.04 or 20.04, this
+is pretty easy.  On Ubuntu 18.04 and above, we also recommend to
+install `libiniparser` using `sudo apt install libiniparser-dev`.
  
-Once ROS is installed, the process is similar to the dVRK code installations.  The instructions can be found here: https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall.   The main difference is the “wstool merge” line.   You would need to use the following line instead of the one provided for the dVRK wiki:
+Once ROS is installed, the process is similar to the dVRK code
+installations.  The instructions can be found here:
+https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall.
+The main difference is the “wstool merge” line.  You would need to use
+the following line instead of the one provided for the dVRK wiki:
+
 ```sh
 wstool merge https://raw.githubusercontent.com/jhu-saw/sawAtracsysFusionTrack/devel/ros/atracsys.rosinstall
 ```
@@ -105,6 +122,11 @@ transform:
 ---
 ```
 
+# Tools to create geometry definitions
+
+One can use the Python scripts from
+https://github.com/jhu-lcsr/optical-tracker-utilities to create
+geometry files for the Atracsys from scratch or from NDi ROM files.
 
 # Known issues, features to add
 

@@ -283,16 +283,17 @@ void mtsAtracsysFusionTrack::Init(void)
 
     StateTable.AddData(m_measured_cp_array, "measured_cp_array");
 
-    mtsInterfaceProvided * provided = AddInterfaceProvided("Controller");
-    if (provided) {
+    m_controller_interface = AddInterfaceProvided("Controller");
+    if (m_controller_interface) {
         // system info
-        provided->AddCommandReadState(StateTable, m_measured_cp_array, "measured_cp_array");
-        provided->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
+        m_controller_interface->AddMessageEvents();
+        m_controller_interface->AddCommandReadState(StateTable, m_measured_cp_array, "measured_cp_array");
+        m_controller_interface->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
 
         // crtk interfaces
-        provided->AddCommandReadState(m_configuration_state_table, m_crtk_interfaces_provided,
-                                      "crtk_interfaces_provided");
-        provided->AddEventVoid(m_crtk_interfaces_provided_updated, "crtk_interfaces_provided_updated");
+        m_controller_interface->AddCommandReadState(m_configuration_state_table, m_crtk_interfaces_provided,
+                                                    "crtk_interfaces_provided");
+        m_controller_interface->AddEventVoid(m_crtk_interfaces_provided_updated, "crtk_interfaces_provided_updated");
     }
 }
 
@@ -354,9 +355,24 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
+    // allows the use of relative paths for geometry files
+    m_path.Add(cmnPath::GetWorkingDirectory());
+    m_path.Add(std::string(sawAtracsysFusionTrack_SOURCE_DIR) + "/../share", cmnPath::TAIL);
+
+    std::string fullname = m_path.Find(filename);
+    if (!cmnPath::Exists(fullname)) {
+        CMN_LOG_CLASS_INIT_ERROR << "Configure: configuration file \"" << filename
+                                 << "\" not found in path (" << m_path << ")" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // added path of main config file so we can load relative geometry files
+    std::string configDir = fullname.substr(0, fullname.find_last_of('/'));
+    m_path.Add(configDir, cmnPath::TAIL);
+
     // read JSON file passed as param, see configAtracsysFusionTrack.json for an example
     std::ifstream jsonStream;
-    jsonStream.open(filename.c_str());
+    jsonStream.open(fullname.c_str());
 
     Json::Value jsonConfig, jsonValue;
     Json::Reader jsonReader;
@@ -367,9 +383,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
-    // allows the use of relative paths for geometry files
-    cmnPath configPath(cmnPath::GetWorkingDirectory());
-
 #ifdef FTK_OPT_DATA_DIR
     // FTK_OPT_DATA_DIR is defined in SDK 3.0.1, but not in SDK 4.5.2
     // add FTK path too
@@ -379,6 +392,18 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         configPath.Add(ftkPath);
     }
 #endif
+
+    // path to locate tool definitions
+    const Json::Value definitionPath = jsonConfig["definition-path"];
+    // preserve order from config file
+    for (int index = (definitionPath.size() - 1);
+         index >= 0;
+         --index) {
+        std::string path = definitionPath[index].asString();
+        if (path != "") {
+            m_path.Add(path, cmnPath::HEAD);
+        }
+    }
 
     // now, find the tool geometry, either as ini or json file
     const Json::Value jsonTools = jsonConfig["tools"];
@@ -402,6 +427,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
                 CMN_LOG_CLASS_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
                                          << toolName << "\" in configuration file \""
                                          << filename << "\", both were found" << std::endl;
+                exit(EXIT_FAILURE);
             } else if (!iniTool.empty()) {
                 isJson = false;
                 toolFile = iniTool.asString();
@@ -410,7 +436,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
                 toolFile = jsonTool.asString();
             }
 
-            std::string fullname = configPath.Find(toolFile);
+            fullname = m_path.Find(toolFile);
             // make sure ini file is valid
             if (cmnPath::Exists(fullname)) {
                 CMN_LOG_CLASS_INIT_VERBOSE << "Configure: calling AddTool with tool name: " << toolName << " and configuration file: " << filename << std::endl;
@@ -418,7 +444,8 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
             } else {
                 CMN_LOG_CLASS_INIT_ERROR << "Configure: configuration file \"" << toolFile
                                          << "\" for tool \"" << toolName
-                                         << "\" not found in path (" << configPath << ")" << std::endl;
+                                         << "\" not found in path (" << m_path << ")" << std::endl;
+                exit(EXIT_FAILURE);
             }
         }
     }
@@ -440,6 +467,8 @@ void mtsAtracsysFusionTrack::Startup(void)
     m_configuration_state_table.Advance();
     m_crtk_interfaces_provided_updated();
 
+    // reports system found
+    m_controller_interface->SendStatus(this->GetName() + ": found device SN " + std::to_string(m_internals->m_sn));
     // set reference frame for measured_cp_array
     m_measured_cp_array.ReferenceFrame() = this->Name;
 }

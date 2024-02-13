@@ -1,5 +1,5 @@
 #
-# (C) Copyright 2015-2023 Johns Hopkins University (JHU), All Rights Reserved.
+# (C) Copyright 2015-2024 Johns Hopkins University (JHU), All Rights Reserved.
 #
 # --- begin cisst license - do not edit ---
 #
@@ -9,66 +9,92 @@
 #
 # --- end cisst license ---
 
-cmake_minimum_required (VERSION 2.8.3)
+cmake_minimum_required (VERSION 3.10)
+project (atracsys VERSION 1.1.0)
 
-project (atracsys_ros)
+# first test for ROS1
+set (ROS1_depends cisst_ros_crtk roscpp roslib)
 
-set (CMAKE_CXX_STANDARD 14)
-set (CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_CXX_EXTENSIONS OFF)
- 
-## find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package (catkin REQUIRED
-              COMPONENTS
-              cisst_ros_crtk
-              roscpp
-              roslib
-              )
+find_package (catkin QUIET
+  COMPONENTS
+  ${ROS1_depends})
+
+# ROS 1
+if (catkin_FOUND)
+  set (ROS_VERSION 1)
+  catkin_package (CATKIN_DEPENDS ${ROS1_depends})
+  include_directories (${catkin_INCLUDE_DIRS})
+else (catkin_FOUND)
+
+  # look for ROS2
+  find_package (ament_cmake QUIET)
+  if (ament_cmake_FOUND)
+    set (ROS_VERSION 2)
+    set (ROS2_depends rclcpp
+      std_msgs std_srvs
+      geometry_msgs sensor_msgs diagnostic_msgs
+      tf2_ros tf2_msgs
+      cisst_msgs crtk_msgs
+      cisst_ros_bridge cisst_ros_crtk
+      )
+    foreach (_dep ${ROS2_depends})
+      find_package (${_dep} REQUIRED)
+    endforeach ()
+
+  endif (ament_cmake_FOUND)
+endif (catkin_FOUND)
 
 # find cisst and make sure the required libraries have been compiled
 set (REQUIRED_CISST_LIBRARIES
-     cisstCommon
-     cisstCommonQt
-     cisstVector
-     cisstVectorQt
-     cisstOSAbstraction
-     cisstMultiTask
-     cisstMultiTaskQt
-     cisstParameterTypes
-     cisstParameterTypesQt
-     cisstQt)
+  cisstCommon
+  cisstCommonQt
+  cisstVector
+  cisstVectorQt
+  cisstOSAbstraction
+  cisstMultiTask
+  cisstMultiTaskQt
+  cisstParameterTypes
+  cisstParameterTypesQt
+  cisstQt)
 
 find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
 if (cisst_FOUND_AS_REQUIRED)
 
+  # load cisst configuration
   include (${CISST_USE_FILE})
 
-  # include_directories(include)
-  include_directories (${catkin_INCLUDE_DIRS})
-
-  file (MAKE_DIRECTORY "${CATKIN_DEVEL_PREFIX}/include")
-
-  catkin_package (INCLUDE_DIRS "${CATKIN_DEVEL_PREFIX}/include"
-                  CATKIN_DEPENDS cisst_ros_crtk roscpp roslib)
+  # set paths
+  cisst_set_output_path ()
 
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
   find_package (sawAtracsysFusionTrack 1.1.0)
 
   if (sawAtracsysFusionTrack_FOUND)
 
-    include_directories (${CATKIN_DEVEL_PREFIX}/include
-                         ${sawAtracsysFusionTrack_INCLUDE_DIR})
-
+    # sawJoystick configuration
+    include_directories (${CATKIN_DEVEL_PREFIX}/include ${sawAtracsysFusionTrack_INCLUDE_DIR})
     link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
 
-    add_executable (atracsys_json src/atracsys_json.cpp src/mts_ros_crtk_atracsys_bridge.cpp src/mts_ros_crtk_atracsys_bridge.h)
-    target_link_libraries (atracsys_json
-                           ${sawAtracsysFusionTrack_LIBRARIES}
-                           ${catkin_LIBRARIES})
-    cisst_target_link_libraries (atracsys_json ${REQUIRED_CISST_LIBRARIES})
+    add_executable (atracsys src/atracsys.cpp src/mts_ros_crtk_atracsys_bridge.cpp src/mts_ros_crtk_atracsys_bridge.h)
+    target_link_libraries (atracsys
+      ${sawAtracsysFusionTrack_LIBRARIES}
+      ${catkin_LIBRARIES})
+    cisst_target_link_libraries (atracsys ${REQUIRED_CISST_LIBRARIES})
+
+    install (TARGETS atracsys
+      LIBRARY DESTINATION lib/${PROJECT_NAME}
+      RUNTIME DESTINATION lib/${PROJECT_NAME}
+      LIBRARY DESTINATION lib
+      INCLUDES DESTINATION include)
+
+    if (ROS_VERSION EQUAL 2)
+      ament_target_dependencies (
+        atracsys
+        ${ROS2_depends}
+        )
+      ament_package ()
+    endif ()
 
   else (sawAtracsysFusionTrack_FOUND)
     message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack")
