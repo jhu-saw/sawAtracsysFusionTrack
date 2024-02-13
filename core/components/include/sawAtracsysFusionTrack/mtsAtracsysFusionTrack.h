@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2020 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -77,12 +77,13 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
       Atracsys provides .ini files but we also support .json. */
     bool AddTool(const std::string & toolName,
                  const std::string & fileName,
-                 const bool isJson = false);
+                 const bool isJson,
+                 const std::string & referenceName);
 
     /*! For backward compatibility */
     inline bool AddToolIni(const std::string & toolName,
                            const std::string & fileName) {
-        return AddTool(toolName, fileName, false);
+        return AddTool(toolName, fileName, false, "");
     }
 
     inline size_t GetNumberOfTools(void) const {

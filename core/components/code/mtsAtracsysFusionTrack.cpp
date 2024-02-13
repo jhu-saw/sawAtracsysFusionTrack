@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2021 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -208,7 +208,9 @@ public:
 
     std::string m_name;
     mtsInterfaceProvided * m_interface;
+    prmPositionCartesianGet m_local_measured_cp;
     prmPositionCartesianGet m_measured_cp;
+    prmPositionCartesianGet * m_reference_measured_cp = nullptr;
     double m_registration_error;
     mtsStateTable m_state_table;
 };
@@ -379,7 +381,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     if (!jsonReader.parse(jsonStream, jsonConfig)) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: failed to parse configuration" << std::endl
                                  << jsonReader.getFormattedErrorMessages();
-        m_internals->m_configured = false;
+        exit(EXIT_FAILURE);
         return;
     }
 
@@ -414,9 +416,19 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         // make sure toolName is valid
         bool isJson = false;
         std::string toolFile = "undefined";
-        if (toolName == "") {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename << std::endl;
+        if ((toolName == "") || (toolName == this->Name)) {
+            CMN_LOG_CLASS_INIT_ERROR << "Configure: invalid tool name found in " << filename
+                                     << ".  The tool name must be a non empty string and must not match the device's name ("
+                                     << this->Name << ")" << std::endl;
         } else {
+
+            // reference frame
+            std::string reference;
+            const Json::Value jsonReference = jsonValue["reference"];
+            if (!jsonValue.empty()) {
+                reference = jsonReference.asString();
+            }
+
             const Json::Value iniTool = jsonValue["ini-file"];
             const Json::Value jsonTool = jsonValue["json-file"];
             if (iniTool.empty() && jsonTool.empty()) {
@@ -439,8 +451,12 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
             fullname = m_path.Find(toolFile);
             // make sure ini file is valid
             if (cmnPath::Exists(fullname)) {
-                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: calling AddTool with tool name: " << toolName << " and configuration file: " << filename << std::endl;
-                AddTool(toolName, fullname, isJson);
+                CMN_LOG_CLASS_INIT_VERBOSE << "Configure: calling AddTool with tool name: "
+                                           << toolName << " and configuration file: " << filename
+                                           << ", reference: " << reference << std::endl;
+                if (!AddTool(toolName, fullname, isJson, reference)) {
+                    exit(EXIT_FAILURE);
+                }
             } else {
                 CMN_LOG_CLASS_INIT_ERROR << "Configure: configuration file \"" << toolFile
                                          << "\" for tool \"" << toolName
@@ -524,6 +540,7 @@ void mtsAtracsysFusionTrack::Run(void)
     ToolsType::iterator iter;
     for (iter = m_tools.begin(); iter != end; ++iter) {
         iter->second->m_state_table.Start();
+        iter->second->m_local_measured_cp.SetValid(false);
         iter->second->m_measured_cp.SetValid(false);
     }
 
@@ -540,13 +557,13 @@ void mtsAtracsysFusionTrack::Run(void)
         }
         else {
             mtsAtracsysFusionTrackTool * tool = m_internals->GeometryIdToTool.at(id);
-            tool->m_measured_cp.SetValid(true);
-            tool->m_measured_cp.Position().Translation().Assign(ft_tool.translationMM[0] * cmn_mm,
-                                                                ft_tool.translationMM[1] * cmn_mm,
-                                                                ft_tool.translationMM[2] * cmn_mm);
+            tool->m_local_measured_cp.SetValid(true);
+            tool->m_local_measured_cp.Position().Translation().Assign(ft_tool.translationMM[0] * cmn_mm,
+                                                                      ft_tool.translationMM[1] * cmn_mm,
+                                                                      ft_tool.translationMM[2] * cmn_mm);
             for (size_t row = 0; row < 3; ++row) {
                 for (size_t col = 0; col < 3; ++col) {
-                    tool->m_measured_cp.Position().Rotation().Element(row, col) = ft_tool.rotation[row][col];
+                    tool->m_local_measured_cp.Position().Rotation().Element(row, col) = ft_tool.rotation[row][col];
                 }
             }
             tool->m_registration_error = ft_tool.registrationErrorMM * cmn_mm;
@@ -555,6 +572,17 @@ void mtsAtracsysFusionTrack::Run(void)
 
     // finalize all tools
     for (iter = m_tools.begin(); iter != end; ++iter) {
+        auto reference = iter->second->m_reference_measured_cp;
+        if (reference == nullptr) {
+            iter->second->m_measured_cp = iter->second->m_local_measured_cp;
+        } else {
+            // valid if both valid
+            iter->second->m_measured_cp.Valid()
+                = iter->second->m_local_measured_cp.Valid() && reference->Valid();
+            // use reference pose
+            iter->second->m_measured_cp.Position()
+                = reference->Position().Inverse() * iter->second->m_local_measured_cp.Position();
+        }
         iter->second->m_state_table.Advance();
     }
 
@@ -567,7 +595,7 @@ void mtsAtracsysFusionTrack::Run(void)
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
         break;
     default:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl; 
+        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
     case FTK_QS_NS::QS_OK:
         break;
@@ -605,7 +633,8 @@ void mtsAtracsysFusionTrack::Cleanup(void)
 
 bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
                                      const std::string & fileName,
-                                     const bool isJson)
+                                     const bool isJson,
+                                     const std::string & referenceName)
 {
 
     // check if this tool already exists
@@ -613,6 +642,21 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     if (tool_iterator != m_tools.end()) {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << toolName << " already exists" << std::endl;
         return false;
+    }
+
+    std::string _referenceName = referenceName;
+    ToolsType::iterator referenceIterator;
+    if (_referenceName != "") {
+        referenceIterator = m_tools.find(_referenceName);
+        if (referenceIterator == m_tools.end()) {
+            CMN_LOG_CLASS_INIT_ERROR << "AddTool: can't find reference \"" << _referenceName
+                                     << "\" for tool \"" << toolName
+                                     << "\".  Make sure reference frames/tools are created earlier in the config file."
+                                     << std::endl;
+            return false;
+        }
+    } else {
+        _referenceName = this->Name;
     }
 
     // make sure we can find and load this tool ini file
@@ -636,7 +680,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     } else {
         CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to parse geometry file \""
                                  << fileName << "\" for tool \"" << toolName << "\"" << std::endl;
-        exit(EXIT_FAILURE);
+        return false;
     }
 
     ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_sn, &geometry);
@@ -680,14 +724,21 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     m_internals->GeometryIdToTool[geometry.geometryId] = tool;
 
     // frames used
-    tool->m_measured_cp.ReferenceFrame() = this->Name;
+    tool->m_local_measured_cp.ReferenceFrame() = this->Name;
+    tool->m_local_measured_cp.MovingFrame() = toolName;
+    tool->m_measured_cp.ReferenceFrame() = _referenceName;
     tool->m_measured_cp.MovingFrame() = toolName;
+    if (_referenceName != this->Name) {
+        tool->m_reference_measured_cp = &(referenceIterator->second->m_measured_cp);
+    }
 
     // add data for this tool and populate tool interface
     tool->m_state_table.SetAutomaticAdvance(false);
     this->AddStateTable(&(tool->m_state_table));
+    tool->m_state_table.AddData(tool->m_local_measured_cp, "local_measured_cp");
     tool->m_state_table.AddData(tool->m_measured_cp, "measured_cp");
     tool->m_state_table.AddData(tool->m_registration_error, "registration_error");
+    tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_local_measured_cp, "local/measured_cp");
     tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_measured_cp, "measured_cp");
     tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_registration_error, "registration_error");
     tool->m_interface->AddCommandReadState(tool->m_state_table,
