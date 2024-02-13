@@ -729,7 +729,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     tool->m_measured_cp.ReferenceFrame() = _referenceName;
     tool->m_measured_cp.MovingFrame() = toolName;
     if (_referenceName != this->Name) {
-        tool->m_reference_measured_cp = &(referenceIterator->second->m_measured_cp);
+        tool->m_reference_measured_cp = &(referenceIterator->second->m_local_measured_cp);
     }
 
     // add data for this tool and populate tool interface
