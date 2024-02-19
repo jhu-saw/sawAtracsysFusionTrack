@@ -72,7 +72,7 @@ if (cisst_FOUND_AS_REQUIRED)
 
   if (sawAtracsysFusionTrack_FOUND)
 
-    # sawJoystick configuration
+    # sawAtracsysFusionTrack configuration
     include_directories (${CATKIN_DEVEL_PREFIX}/include ${sawAtracsysFusionTrack_INCLUDE_DIR})
     link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
 
