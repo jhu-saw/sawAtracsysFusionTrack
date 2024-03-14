@@ -70,7 +70,7 @@ sawAtracsysFusionTrackQtExample -j config003.json
 
 If you also want ROS topics corresponding to the tracked tools, try:
 ```sh
-rosrun atracsys_ros atracsys_json -j config003.json
+rosrun atracsys atracsys -j config003.json
 ```
 
 # Unable to find shared object file `libdevice64.so`
@@ -104,7 +104,7 @@ geometry files for the Atracsys from scratch or from NDi ROM files.
 
 To start the ROS node, use:
 ```sh
-rosrun atracsys_ros atracsys_json -j config-carbon-3-4.json
+rosrun atracsys atracsys -j config-carbon-3-4.json
 ```
 
 Then you can use ROS topics to get the data:
