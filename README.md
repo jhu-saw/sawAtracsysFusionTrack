@@ -92,6 +92,11 @@ By default, Atracsys seems to be using `.ini` file for the tool geometry definit
    ```sh
    sudo apt install libiniparser-dev
    ```
+# Tools to create geometry definitions
+
+One can use the Python scripts from
+https://github.com/jhu-lcsr/optical-tracker-utilities to create
+geometry files for the Atracsys from scratch or from NDi ROM files.
 
 # Running the code
 
@@ -128,12 +133,6 @@ transform:
     w: -0.068462781014
 ---
 ```
-
-# Tools to create geometry definitions
-
-One can use the Python scripts from
-https://github.com/jhu-lcsr/optical-tracker-utilities to create
-geometry files for the Atracsys from scratch or from NDi ROM files.
 
 # Known issues, features to add
 
