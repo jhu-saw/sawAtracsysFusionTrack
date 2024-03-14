@@ -29,33 +29,40 @@ Also make sure your network interface is configured with MTU set to 9000.
 * Ubuntu: use `sudo nm-connection-editor` to set the MTU.
 * Windows: choose the connection `Properties`, then `Configure...Advanced` and set the `Jumbo Packet` property to have a value of `9014 Bytes`.
 
-## Linux with ROS/Catkin build tools
+## Download and build
 
-We would strongly recommend to build the code using the ROS 1 tools.
-You would need to first install ROS 1 using instructions from
-www.ros.org.  Assuming you’re using Ubuntu 16.04, 18.04 or 20.04, this
-is pretty easy.  On Ubuntu 18.04 and above, we also recommend to
-install `libiniparser` using `sudo apt install libiniparser-dev`.
- 
-Once ROS is installed, the process is similar to the dVRK code
-installations.  The instructions can be found here:
-https://github.com/jhu-dvrk/sawIntuitiveResearchKit/wiki/CatkinBuild#catkin-build-and-rosinstall.
-The main difference is the “wstool merge” line.  You would need to use
-the following line instead of the one provided for the dVRK wiki:
+See https://github.com/jhu-saw/vcs for download and build instructions.
 
-```sh
-wstool merge https://raw.githubusercontent.com/jhu-saw/sawAtracsysFusionTrack/devel/ros/atracsys.rosinstall
-```
+On Ubuntu 18.04 and above, we also recommend to install `libiniparser` using `sudo apt install libiniparser-dev`.
 
-When compiling the SAW Atracsys code, you will need to specify where to find the Atracsys SDK.  Do a first `catkin build`, this build will fail because the directory containing the SDK is not defined.   To define it, use `ccmake` on the build directory for the SAW Atracsys component.  For example:
-```sh
-adeguet1@lcsr-qla:~/catkin_ws$ ccmake devel/saw_atracsys_fusion_track
-```
-In the command above, the ROS workspace is `~/catkin_ws` and the build tree is `devel`.
+When compiling the SAW Atracsys code, you will need to specify where to find the Atracsys SDK.  Do a first `catkin build` (ROS1) or `colcon build` (ROS2).  This build will fail because the directory containing the SDK is not defined.   To define it, use `ccmake` on the build directory for the SAW Atracsys component:
+* ROS1:
+  ```sh
+  cd ~/catkin_ws
+  ccmake devel/saw_atracsys_fusion_track
+  ```
+* ROS2:
+  ```sh
+  cd ~/ros2_ws
+  ccmake build/sawAtracsysFusionTrackCore
+  ```
 
-Once in CMake, locate `Atracsys_INCLIUDE_DIR` and make it point to the `include` directory in your SDK.  For example, `~/fusionTrack_v2.3_gcc-4.7/include`.  Hit configure once and the two variables `atracsys_LIBRARY_device` and `atracsys_LIBRARY_fusionTrack` should have been found automatically.  Don't forget to hit "Generate" before quitting CMake.  You should now be able to build using `catkin build --force-cmake`.   The option `--force-cmake` is required to force CMake to run for all packages that depends on the `sawAtracsysFusionTrack` package.
+Once in CMake, locate `Atracsys_INCLIUDE_DIR` and make it point to the `include` directory in your SDK.  For example, `~/fusionTrack_v2.3_gcc-4.7/include`.  Hit configure once and the two variables `atracsys_LIBRARY_device` and `atracsys_LIBRARY_fusionTrack` should have been found automatically.  Don't forget to hit "Generate" before quitting CMake.
 
-Once the packages are all built, you must first refresh your ROS environment using `source ~/catkin_ws/devel_release/setup.bash`.   Then you can start the examples provided using the configuration files in the `share` directory.  Change directory to `src/sawAtracsysFusionTrack/share` and then you can run:
+You should now be able to build but you need to force CMake to run for all packages that depends on the `sawAtracsysFusionTrack` package:
+* ROS1
+  ```sh
+  cd ~/catkin_ws
+  catkin build --force-cmake
+  ```
+* ROS2:
+  ```sh
+  cd ~/ros2_ws
+  colcon build --cmake-force-configure
+  ```
+Once the packages are all built, you must first refresh your ROS environment by sourcing `setup.bash`.   Then you can start the examples provided using the configuration files in the `share` directory.  Change directory to `src/sawAtracsysFusionTrack/core/share` and then you can run:
+
+## Usage
 
 ```sh
 sawAtracsysFusionTrackQtExample -j config003.json
