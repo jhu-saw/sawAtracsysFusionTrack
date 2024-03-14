@@ -39,7 +39,7 @@ When compiling the SAW Atracsys code, you will need to specify where to find the
 * ROS1:
   ```sh
   cd ~/catkin_ws
-  ccmake devel/saw_atracsys_fusion_track
+  ccmake build/saw_atracsys_fusion_track
   ```
 * ROS2:
   ```sh
