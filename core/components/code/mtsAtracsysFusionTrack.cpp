@@ -391,7 +391,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     if ((ftkGetData(m_internals->m_library, m_internals->m_sn,
                     FTK_OPT_DATA_DIR, &buffer ) == FTK_ERROR_NS::FTK_OK) && (buffer.size > 0)) {
         std::string ftkPath(reinterpret_cast<char*>(buffer.data));
-        configPath.Add(ftkPath);
+        m_path.Add(ftkPath);
     }
 #endif
 
