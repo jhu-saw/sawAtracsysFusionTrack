@@ -70,6 +70,8 @@ if (cisst_FOUND_AS_REQUIRED)
   # sawAtracsysFusionTrack has been compiled within cisst, we should find it automatically
   find_package (sawAtracsysFusionTrack 1.1.0)
 
+  find_package(OpenCV REQUIRED)
+
   if (sawAtracsysFusionTrack_FOUND)
 
     # sawAtracsysFusionTrack configuration
@@ -79,7 +81,8 @@ if (cisst_FOUND_AS_REQUIRED)
     add_executable (atracsys src/atracsys.cpp src/mts_ros_crtk_atracsys_bridge.cpp src/mts_ros_crtk_atracsys_bridge.h)
     target_link_libraries (atracsys
       ${sawAtracsysFusionTrack_LIBRARIES}
-      ${catkin_LIBRARIES})
+      ${catkin_LIBRARIES}
+      ${OpenCV_LIBS})
     cisst_target_link_libraries (atracsys ${REQUIRED_CISST_LIBRARIES})
 
     install (TARGETS atracsys

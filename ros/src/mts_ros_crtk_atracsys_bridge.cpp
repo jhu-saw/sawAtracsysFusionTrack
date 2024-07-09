@@ -52,6 +52,7 @@ void mts_ros_crtk_atracsys_bridge::bridge(const std::string & _component_name,
     if (!_clean_namespace.empty()) {
         _clean_namespace.append("/");
     }
+
     // required interfaces specific to this component to bridge
     const std::string _required_interface_name = _component_name + "_using_" + _interface_name;
 

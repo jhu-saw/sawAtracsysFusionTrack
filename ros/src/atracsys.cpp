@@ -23,6 +23,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
+#include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
 #include "mts_ros_crtk_atracsys_bridge.h"
@@ -38,6 +39,7 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsAtracsysStereo", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
@@ -79,18 +81,28 @@ int main(int argc, char * argv[])
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("atracsys");
     tracker->Configure(jsonConfigFile);
 
+    mtsAtracsysStereo * stereo = new mtsAtracsysStereo("stereo", tracker->GetName());
+    stereo->Configure(jsonConfigFile);
+
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
+    componentManager->AddComponent(stereo);
+    componentManager->Connect(tracker->GetName(), "StereoRaw",
+                              stereo->GetName(), "StereoRaw");
 
     // ROS CRTK bridge
     mts_ros_crtk_atracsys_bridge * crtk_bridge
         = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", rosNode);
-    crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
+
+    crtk_bridge->bridge(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
+    std::string stereo_namespace = tracker->GetName() + "/stereo";
+    cisst_ral::clean_namespace(stereo_namespace);
+    crtk_bridge->bridge_interface_provided(stereo->GetName(), "stereo", stereo_namespace, rosPeriod, tfPeriod);
 
     auto num_tools = tracker->GetNumberOfTools();
     for (size_t i = 0; i < num_tools; ++i) {
-        crtk_bridge->bridge_tool_error("atracsys", tracker->GetToolName(i));
+        crtk_bridge->bridge_tool_error(tracker->GetName(), tracker->GetToolName(i));
     }
 
     componentManager->AddComponent(crtk_bridge);
@@ -119,7 +131,7 @@ int main(int argc, char * argv[])
     prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
         = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
     positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
-    positionQtWidgetFactory->AddFactorySource("atracsys", "Controller");
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
     tabWidget->addTab(positionQtWidgetFactory, "Tools");

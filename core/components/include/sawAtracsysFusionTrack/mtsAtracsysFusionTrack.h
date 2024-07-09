@@ -22,6 +22,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnPath.h>
 #include <cisstMultiTask/mtsTaskContinuous.h>
 #include <cisstParameterTypes/prmPositionCartesianArrayGet.h>
+#include <cisstParameterTypes/prmImageFrame.h>
+#include <cisstParameterTypes/prmCameraInfo.h>
 
 #include <json/json.h> // in order to read config file
 
@@ -102,6 +104,9 @@ protected:
     /*! Code called by all constructors. */
     void Init(void);
 
+    void ProcessIRTrackingFrame();
+    void ProcessRGBStereoFrame();
+
     /*! Search path for configuration files */
     cmnPath m_path;
     
@@ -110,6 +115,8 @@ protected:
 
     /*! Controller interface */
     mtsInterfaceProvided * m_controller_interface = nullptr;
+
+    mtsInterfaceProvided * m_stereo_raw_interface = nullptr;
     
     mtsAtracsysFusionTrackInternals * m_internals = nullptr;
     typedef std::map<std::string, mtsAtracsysFusionTrackTool *> ToolsType;
@@ -120,9 +127,15 @@ protected:
 
     prmPositionCartesianArrayGet m_measured_cp_array;
 
+    prmCameraInfo m_left_camera_info, m_right_camera_info;
+    vct3 m_camera_rotation, m_camera_translation;
+    prmImageFrame m_left_image_raw, m_right_image_raw;
+    int m_num_enabled_dot_projectors = 0;
+
     /*! CRTK related methods */
     mtsFunctionVoid m_crtk_interfaces_provided_updated;
     std::vector<mtsDescriptionInterfaceFullName> m_crtk_interfaces_provided;
+
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(mtsAtracsysFusionTrack);

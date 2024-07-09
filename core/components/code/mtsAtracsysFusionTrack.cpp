@@ -16,13 +16,17 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
+#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
+
 #include <ftkInterface.h>
+
 #include <cisstCommon/cmnUnits.h>
 #include <cisstMultiTask/mtsInterfaceProvided.h>
 #include <cisstParameterTypes/prmPositionCartesianGet.h>
+
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackConfig.h>
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackRevision.h>
-#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
+
 
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsAtracsysFusionTrack, mtsTaskContinuous, mtsTaskContinuousConstructorArg);
 
@@ -221,7 +225,9 @@ public:
     mtsAtracsysFusionTrackInternals():
         m_library(0),
         m_sn(0),
-        m_frame_query(0)
+        m_frame_query(nullptr),
+        m_configured(false),
+        m_images_enabled(false)
     {}
 
     void SetupFrameQuery(const size_t number_of_tools,
@@ -230,7 +236,6 @@ public:
             delete m_frame_query;
         }
         m_frame_query = ftkCreateFrame();
-        // memset(m_frame_query, 0, sizeof(ftkFrameQuery));  // lead to error 4 with SDK 4.4.1
 
         // tools, aka fT Markers
         m_tools = new ftkMarker[number_of_tools];
@@ -241,8 +246,7 @@ public:
         m_frame_query->threeDFiducials = m_stray_markers;
         m_frame_query->threeDFiducialsVersionSize.ReservedSize = sizeof(ftk3DFiducial) * number_of_stray_markers;
 
-        ftkError err(ftkSetFrameOptions(false, false, 16u, 16u,
-                                        // 0u, 16u,
+        ftkError err(ftkSetFrameOptions(m_images_enabled, false, 16u, 16u,
                                         number_of_stray_markers, number_of_tools,
                                         m_frame_query));
         if (err != FTK_ERROR_NS::FTK_OK) {
@@ -252,6 +256,170 @@ public:
         }
     }
 
+    std::string QueryDeviceType()
+    {
+        ftkBuffer buffer;
+        ftkError status = ftkGetData(m_library, m_sn, option_id_sTk_device_type, &buffer);
+        if (status != ftkError::FTK_OK) return "";
+
+        std::string device_type(buffer.data);
+
+        return device_type;
+    }
+
+    ftkError ConfigureImageSending(bool enabled)
+    {
+        ftkBuffer buffer;
+        buffer.reset();
+        std::string frame_pattern = "S";
+        std::memcpy(buffer.uData, frame_pattern.c_str(), frame_pattern.length());
+        buffer.size = frame_pattern.length();
+
+        ftkError status = ftkSetData(m_library, m_sn, option_id_image_pattern, &buffer);
+        if (status != ftkError::FTK_OK) {
+            return status;
+        }
+
+        int32_t enabled_value = enabled ? 1 : 0;
+        status = ftkSetInt32(m_library, m_sn, option_id_enable_images_sending, enabled_value);
+        if (status == ftkError::FTK_OK) {
+            m_images_enabled = enabled;
+        } else {
+            return status;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, option_id_vis_integration_time, 16000);
+        if (status != ftkError::FTK_OK) {
+            return status;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, option_id_sl_integration_time, 16000);
+        if (status != ftkError::FTK_OK) {
+            return status;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, option_id_num_enabled_dot_projector, 3);
+        if (status != ftkError::FTK_OK) {
+            return status;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, option_id_dot_projector_strobe_time, 16000);
+        if (status != ftkError::FTK_OK) {
+            return status;
+        }
+
+        return ftkError::FTK_OK;
+    }
+
+    void ExtractImage(uint8_t *pixels, prmImageFrame& dest)
+    {
+        dest.Width() = m_frame_query->imageHeader->width;
+        dest.Height() = m_frame_query->imageHeader->height;
+        dest.Channels() = 1;
+
+        const size_t size = dest.Width() * dest.Height();
+        dest.Data().resize(size);
+        std::copy(pixels, pixels + size, dest.Data().begin());
+    }
+
+    void ExtractLeftImage(prmImageFrame& dest)
+    {
+        ExtractImage(m_frame_query->imageLeftPixels, dest);
+    }
+
+    void ExtractRightImage(prmImageFrame& dest)
+    {
+        ExtractImage(m_frame_query->imageRightPixels, dest);
+    }
+
+    // Convert ftkCameraParameters to standard 3x3 intrinsic matrix representation
+    void CameraParamsToIntrinsicMatrix(ftkCameraParameters& params, vct3x3& intrinsic_out)
+    {
+        double fu = params.FocalLength[0];
+        double fv = params.FocalLength[1];
+
+        intrinsic_out.at(0, 0) = fu;
+        intrinsic_out.at(1, 1) = fv;
+        intrinsic_out.at(0, 1) = fu * params.Skew;
+        intrinsic_out.at(0, 2) = params.OpticalCentre[0];
+        intrinsic_out.at(1, 2) = params.OpticalCentre[1];
+        intrinsic_out.at(2, 2) = 1.0f;
+    }
+
+    // Retrieve stereo camera calibration from device, return true/false for success/error
+    bool RetrieveStereoCameraCalibration(prmCameraInfo& left, prmCameraInfo& right, vct3& rotation, vct3& translation)
+    {
+        ftkError status;
+
+        status = ftkSetInt32(m_library, m_sn, option_id_export_calibration, 1);
+        if (status != ftkError::FTK_OK) {
+
+            CMN_LOG_RUN_ERROR << "Error enabling stereo calibration export: "
+                                    << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        // need initialized frame query to retrieve camera calibration
+        if (!m_frame_query) {
+            SetupFrameQuery(0, 0);
+        }
+
+        int attempts = 0;
+        int max_attempts = 20;
+
+        do {
+            status = ftkGetLastFrame(m_library, m_sn, m_frame_query, 100u);
+        } while (status != ftkError::FTK_OK && attempts++ < max_attempts);
+
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_RUN_ERROR << "Error retrieving stereo calibration frame: "
+                                    << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, option_id_export_calibration, 0);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_RUN_ERROR << "Error disabling stereo calibration export: "
+                                    << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        ftkFrameInfoData frame_info;
+        frame_info.WantedInformation = ftkInformationType::CalibrationParameters;
+
+        status = ftkExtractFrameInfo(m_frame_query, &frame_info);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_RUN_ERROR << "Error extracting frame info for stereo calibration: "
+                                    << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        ftkStereoParameters stereo_params = frame_info.Calibration;
+        ftkCameraParameters left_params = stereo_params.LeftCamera;
+        ftkCameraParameters right_params = stereo_params.RightCamera;
+
+        auto header = m_frame_query->imageHeader;
+        left.Width() = right.Width() = header->width;
+        left.Height() = right.Height() = header->height;
+
+        left.DistortionParameters().SetSize(5);
+        right.DistortionParameters().SetSize(5);
+        for (size_t idx = 0; idx < 5; idx++) {
+            left.DistortionParameters()[idx] = left_params.Distorsions[idx];
+            right.DistortionParameters()[idx] = right_params.Distorsions[idx];
+        }
+
+        CameraParamsToIntrinsicMatrix(left_params, left.Intrinsic());
+        CameraParamsToIntrinsicMatrix(right_params, right.Intrinsic());
+
+        for (size_t idx = 0; idx < 3; idx++) {
+            rotation[idx] = stereo_params.Rotation[idx];
+            translation[idx] = stereo_params.Translation[idx] * cmn_mm;
+        }
+
+        return true;
+    }
+
     ftkLibrary m_library;
     uint64 m_sn;
     ftkFrameQuery * m_frame_query;
@@ -259,10 +427,21 @@ public:
     ftk3DFiducial * m_stray_markers;
     bool m_configured;
 
+    bool m_images_enabled;
+
     typedef std::map<uint32, mtsAtracsysFusionTrackTool *> GeometryIdToToolMap;
     GeometryIdToToolMap GeometryIdToTool;
-};
 
+private:
+    const uint32_t option_id_sTk_device_type = 221;
+    const uint32_t option_id_enable_images_sending = 6003;
+    const uint32_t option_id_image_pattern = 199;
+    const uint32_t option_id_vis_integration_time = 193;
+    const uint32_t option_id_sl_integration_time = 194;
+    const uint32_t option_id_num_enabled_dot_projector = 110;
+    const uint32_t option_id_dot_projector_strobe_time = 197;
+    const uint32_t option_id_export_calibration = 181;
+};
 
 static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType CMN_UNUSED(type))
 {
@@ -271,7 +450,6 @@ static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDevi
         *lastDevice = device;
     }
 }
-
 
 void mtsAtracsysFusionTrack::Init(void)
 {
@@ -283,7 +461,14 @@ void mtsAtracsysFusionTrack::Init(void)
     AddStateTable(&m_configuration_state_table);
     m_configuration_state_table.AddData(m_crtk_interfaces_provided, "crtk_interfaces_provided");
 
+    m_configuration_state_table.AddData(m_left_camera_info, "left_camera_info");
+    m_configuration_state_table.AddData(m_right_camera_info, "right_camera_info");
+    m_configuration_state_table.AddData(m_camera_rotation, "camera_rotation");
+    m_configuration_state_table.AddData(m_camera_translation, "camera_translation");
+
     StateTable.AddData(m_measured_cp_array, "measured_cp_array");
+    StateTable.AddData(m_left_image_raw, "left_image");
+    StateTable.AddData(m_right_image_raw, "right_image");
 
     m_controller_interface = AddInterfaceProvided("Controller");
     if (m_controller_interface) {
@@ -297,14 +482,17 @@ void mtsAtracsysFusionTrack::Init(void)
                                                     "crtk_interfaces_provided");
         m_controller_interface->AddEventVoid(m_crtk_interfaces_provided_updated, "crtk_interfaces_provided_updated");
     }
-}
 
-#if 0
-static void OptionEnumerator(uint64 sn, void *CMN_UNUSED(user), ftkOptionsInfo *oi)
-{
-    CMN_LOG_INIT_VERBOSE << "Option " << oi->id << "  " << oi->name << std::endl;
+    m_stereo_raw_interface = AddInterfaceProvided("StereoRaw");
+    if (m_stereo_raw_interface) {
+        m_stereo_raw_interface->AddCommandReadState(StateTable, m_left_image_raw, "left/image_raw");
+        m_stereo_raw_interface->AddCommandReadState(StateTable, m_right_image_raw, "right/image_raw");
+        m_stereo_raw_interface->AddCommandReadState(m_configuration_state_table, m_left_camera_info, "left/camera_info");
+        m_stereo_raw_interface->AddCommandReadState(m_configuration_state_table, m_right_camera_info, "right/camera_info");
+        m_stereo_raw_interface->AddCommandReadState(m_configuration_state_table, m_camera_rotation, "camera_rotation");
+        m_stereo_raw_interface->AddCommandReadState(m_configuration_state_table, m_camera_translation, "camera_translation");
+    }
 }
-#endif
 
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
@@ -315,9 +503,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     CMN_LOG_CLASS_INIT_VERBOSE << "Atracsys SDK Version " << buffer.data << std::endl;
 
 #if 0
-    if (ftkEnumerateOptions(m_internals->m_library, 0LL, OptionEnumerator, NULL) != SDK_FTK_OK)
-        CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to enumerate Atracsys options" << std::endl;
-
     if (ftkGetData(m_internals->m_library, 0LL, FTK_OPT_DRIVER_VER, &buffer) != SDK_FTK_OK)
         CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to get Atracsys Driver version" << std::endl;
 #endif
@@ -345,6 +530,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
             break;
         }
     }
+
     if (m_internals->m_sn == 0LL) {
         CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected ("
                                  << this->GetName() << ")" << std::endl;
@@ -455,7 +641,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
                                            << toolName << " and configuration file: " << filename
                                            << ", reference: " << reference << std::endl;
                 if (!AddTool(toolName, fullname, isJson, reference)) {
-                    exit(EXIT_FAILURE);
+                    exit(EXIT_FAILURE); 
                 }
             } else {
                 CMN_LOG_CLASS_INIT_ERROR << "Configure: configuration file \"" << toolFile
@@ -463,6 +649,22 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
                                          << "\" not found in path (" << m_path << ")" << std::endl;
                 exit(EXIT_FAILURE);
             }
+        }
+    }
+
+    // if stereo is configured, configure Atracsys to send images
+    bool has_stereo_config = jsonConfig.isMember("stereo");
+    if (has_stereo_config) {
+        std::string device_type = m_internals->QueryDeviceType();
+        if (device_type == "") {
+            CMN_LOG_CLASS_INIT_ERROR << "failed to read device type" << std::endl;
+        } else {
+            CMN_LOG_CLASS_INIT_VERBOSE << "device type: " << device_type << std::endl;
+        }
+
+        ftkError status = m_internals->ConfigureImageSending(true);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_CLASS_INIT_ERROR << "failed to enabled image sending: " <<  static_cast<int>(status) << std::endl;
         }
     }
 
@@ -476,17 +678,24 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 
 void mtsAtracsysFusionTrack::Startup(void)
 {
-    CMN_LOG_CLASS_RUN_ERROR << "Startup" << std::endl;
     // trigger event so connected component can bridge crtk provided interface as needed
     m_configuration_state_table.Start();
     m_crtk_interfaces_provided.push_back(mtsDescriptionInterfaceFullName("localhost", this->Name, "Controller"));
-    m_configuration_state_table.Advance();
     m_crtk_interfaces_provided_updated();
 
     // reports system found
     m_controller_interface->SendStatus(this->GetName() + ": found device SN " + std::to_string(m_internals->m_sn));
     // set reference frame for measured_cp_array
     m_measured_cp_array.ReferenceFrame() = this->Name;
+
+    bool ok = m_internals->RetrieveStereoCameraCalibration(
+        m_left_camera_info, m_right_camera_info,
+        m_camera_rotation, m_camera_translation
+    );
+    m_left_camera_info.Valid() = ok;
+    m_right_camera_info.Valid() = ok;
+
+    m_configuration_state_table.Advance();
 }
 
 
@@ -495,135 +704,47 @@ void mtsAtracsysFusionTrack::Run(void)
     // process mts commands
     ProcessQueuedCommands();
 
+    if (m_internals->m_library == 0LL) {
+        return;
+    }
+
     // get latest frame from fusion track library/device
     ftkError status = ftkGetLastFrame(m_internals->m_library,
                                       m_internals->m_sn,
                                       m_internals->m_frame_query,
                                       100u);
+
     // negative error codes are warnings
     m_measured_cp_array.SetValid(true);
     if (status != FTK_ERROR_NS::FTK_OK) {
         if (static_cast<int>(status) < 0) {
-            // std::cerr << "Warning: " << status << std::endl;
+            CMN_LOG_CLASS_RUN_WARNING << "Warning: " << static_cast<int>(status) << std::endl;
         } else {
             m_measured_cp_array.SetValid(false);
-            std::cerr << "Error: " << static_cast<int>(status) << std::endl;
+            CMN_LOG_CLASS_RUN_ERROR << "Error: " << static_cast<int>(status) << std::endl;
             return;
         }
     }
 
-    // check results of last frame
-    switch (m_internals->m_frame_query->markersStat) {
-    case FTK_QS_NS::QS_WAR_SKIPPED:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
-        break;
-    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
-        break;
-    default:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
-        break;
-    case FTK_QS_NS::QS_OK:
-        break;
+    ftkPixelFormat frame_format = m_internals->m_frame_query->imageHeader->format;
+    switch (frame_format)
+    {
+        case ftkPixelFormat::GRAY8:
+        case ftkPixelFormat::GRAY16:
+            ProcessIRTrackingFrame();
+            break;
+        case ftkPixelFormat::GRAY8_VIS:
+        case ftkPixelFormat::GRAY16_VIS:
+        case ftkPixelFormat::GRAY8_SL:
+        case ftkPixelFormat::GRAY16_SL:
+            ProcessRGBStereoFrame();
+            break;
+        default:
+            CMN_LOG_CLASS_RUN_WARNING << "Warning: unknown frame format: " << static_cast<int>(frame_format) << std::endl;
+            break;
     }
-
-    // make sure we're not getting more markers than allocated
-    size_t count = m_internals->m_frame_query->markersCount;
-    if (count > m_tools.size()) {
-        CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
-                                  << m_tools.size() << " marker(s) will processed." << std::endl;
-        count = m_tools.size();
-    }
-
-    // initialize all tools
-    const ToolsType::iterator end = m_tools.end();
-    ToolsType::iterator iter;
-    for (iter = m_tools.begin(); iter != end; ++iter) {
-        iter->second->m_state_table.Start();
-        iter->second->m_local_measured_cp.SetValid(false);
-        iter->second->m_measured_cp.SetValid(false);
-    }
-
-    // for each marker, get the data and populate corresponding tool
-    for (size_t index = 0; index < count; ++index) {
-        ftkMarker & ft_tool = m_internals->m_tools[index];
-
-        // find the appropriate tool
-        uint32 id = ft_tool.geometryId;
-        if (m_internals->GeometryIdToTool.find(id) == m_internals->GeometryIdToTool.end()) {
-            CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id ("
-                                      << id << ") not registered using AddTool, this marker will be ignored ("
-                                      << this->GetName() << ")" << std::endl;
-        }
-        else {
-            mtsAtracsysFusionTrackTool * tool = m_internals->GeometryIdToTool.at(id);
-            tool->m_local_measured_cp.SetValid(true);
-            tool->m_local_measured_cp.Position().Translation().Assign(ft_tool.translationMM[0] * cmn_mm,
-                                                                      ft_tool.translationMM[1] * cmn_mm,
-                                                                      ft_tool.translationMM[2] * cmn_mm);
-            for (size_t row = 0; row < 3; ++row) {
-                for (size_t col = 0; col < 3; ++col) {
-                    tool->m_local_measured_cp.Position().Rotation().Element(row, col) = ft_tool.rotation[row][col];
-                }
-            }
-            tool->m_registration_error = ft_tool.registrationErrorMM * cmn_mm;
-        }
-    }
-
-    // finalize all tools
-    for (iter = m_tools.begin(); iter != end; ++iter) {
-        auto reference = iter->second->m_reference_measured_cp;
-        if (reference == nullptr) {
-            iter->second->m_measured_cp = iter->second->m_local_measured_cp;
-        } else {
-            // valid if both valid
-            iter->second->m_measured_cp.Valid()
-                = iter->second->m_local_measured_cp.Valid() && reference->Valid();
-            // use reference pose
-            iter->second->m_measured_cp.Position()
-                = reference->Position().Inverse() * iter->second->m_local_measured_cp.Position();
-        }
-        iter->second->m_state_table.Advance();
-    }
-
-    // ---- 3D Fiducials, aka stray markers ---
-    switch (m_internals->m_frame_query->threeDFiducialsStat) {
-    case FTK_QS_NS::QS_WAR_SKIPPED:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
-        break;
-    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
-        break;
-    default:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
-        break;
-    case FTK_QS_NS::QS_OK:
-        break;
-    }
-
-    size_t stray_count = m_internals->m_frame_query->threeDFiducialsCount;
-    m_measured_cp_array.Positions().resize(stray_count);
-
-    //printf("3D fiducials:\n");
-    for (uint32 m = 0; m < stray_count; m++) {
-#if 0
-          printf("\tINDEXES (%u %u)\t XYZ (%.2f %.2f %.2f)\n\t\tEPI_ERR: %.2f\tTRI_ERR: %.2f\tPROB: %.2f\n",
-          m_internals->m_stray_markers[m].leftIndex,
-          m_internals->m_stray_markers[m].rightIndex,
-          m_internals->m_stray_markers[m].positionMM.x,
-          m_internals->m_stray_markers[m].positionMM.y,
-          m_internals->m_stray_markers[m].positionMM.z,
-          m_internals->m_stray_markers[m].epipolarErrorPixels,
-          m_internals->m_stray_markers[m].triangulationErrorMM,
-          m_internals->m_stray_markers[m].probability);
-#endif
-        m_measured_cp_array.Positions().at(m).Translation().Assign(m_internals->m_stray_markers[m].positionMM.x * cmn_mm,
-                                                                   m_internals->m_stray_markers[m].positionMM.y * cmn_mm,
-                                                                   m_internals->m_stray_markers[m].positionMM.z * cmn_mm);
-    }
-    // maybe this helps with error 13?
-    // Sleep(50.0 * cmn_ms);  // no needed with 4.4.1?
 }
+
 
 void mtsAtracsysFusionTrack::Cleanup(void)
 {
@@ -765,4 +886,117 @@ std::string mtsAtracsysFusionTrack::GetToolName(const size_t index) const
         toolIterator++;
     }
     return toolIterator->first;
+}
+
+void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
+    // check results of last frame
+    switch (m_internals->m_frame_query->markersStat) {
+    case FTK_QS_NS::QS_WAR_SKIPPED:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
+        break;
+    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
+        break;
+    default:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+        break;
+    case FTK_QS_NS::QS_OK:
+        break;
+    }
+
+    // make sure we're not getting more markers than allocated
+    size_t count = m_internals->m_frame_query->markersCount;
+    if (count > m_tools.size()) {
+        CMN_LOG_CLASS_RUN_WARNING << "Run: marker overflow, please increase number of markers.  Only the first "
+                                  << m_tools.size() << " marker(s) will processed." << std::endl;
+        count = m_tools.size();
+    }
+
+    // initialize all tools
+    const ToolsType::iterator end = m_tools.end();
+    ToolsType::iterator iter;
+    for (iter = m_tools.begin(); iter != end; ++iter) {
+        iter->second->m_state_table.Start();
+        iter->second->m_local_measured_cp.SetValid(false);
+        iter->second->m_measured_cp.SetValid(false);
+    }
+
+    // for each marker, get the data and populate corresponding tool
+    for (size_t index = 0; index < count; ++index) {
+        ftkMarker & ft_tool = m_internals->m_tools[index];
+
+        // find the appropriate tool
+        uint32 id = ft_tool.geometryId;
+        if (m_internals->GeometryIdToTool.find(id) == m_internals->GeometryIdToTool.end()) {
+            CMN_LOG_CLASS_RUN_WARNING << "Run: found a geometry Id ("
+                                      << id << ") not registered using AddTool, this marker will be ignored ("
+                                      << this->GetName() << ")" << std::endl;
+        }
+        else {
+            mtsAtracsysFusionTrackTool * tool = m_internals->GeometryIdToTool.at(id);
+            tool->m_local_measured_cp.SetValid(true);
+            tool->m_local_measured_cp.Position().Translation().Assign(ft_tool.translationMM[0] * cmn_mm,
+                                                                      ft_tool.translationMM[1] * cmn_mm,
+                                                                      ft_tool.translationMM[2] * cmn_mm);
+            for (size_t row = 0; row < 3; ++row) {
+                for (size_t col = 0; col < 3; ++col) {
+                    tool->m_local_measured_cp.Position().Rotation().Element(row, col) = ft_tool.rotation[row][col];
+                }
+            }
+            tool->m_registration_error = ft_tool.registrationErrorMM * cmn_mm;
+        }
+    }
+
+    // finalize all tools
+    for (iter = m_tools.begin(); iter != end; ++iter) {
+        auto reference = iter->second->m_reference_measured_cp;
+        if (reference == nullptr) {
+            iter->second->m_measured_cp = iter->second->m_local_measured_cp;
+        } else {
+            // valid if both valid
+            iter->second->m_measured_cp.Valid()
+                = iter->second->m_local_measured_cp.Valid() && reference->Valid();
+            // use reference pose
+            iter->second->m_measured_cp.Position()
+                = reference->Position().Inverse() * iter->second->m_local_measured_cp.Position();
+        }
+        iter->second->m_state_table.Advance();
+    }
+
+    // ---- 3D Fiducials, aka stray markers ---
+    switch (m_internals->m_frame_query->threeDFiducialsStat) {
+    case FTK_QS_NS::QS_WAR_SKIPPED:
+        //CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
+        break;
+    case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
+        break;
+    default:
+        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+        break;
+    case FTK_QS_NS::QS_OK:
+        break;
+    }
+
+    size_t stray_count = m_internals->m_frame_query->threeDFiducialsCount;
+    m_measured_cp_array.Positions().resize(stray_count);
+
+    for (uint32 m = 0; m < stray_count; m++) {
+        m_measured_cp_array.Positions().at(m).Translation().Assign(m_internals->m_stray_markers[m].positionMM.x * cmn_mm,
+                                                                   m_internals->m_stray_markers[m].positionMM.y * cmn_mm,
+                                                                   m_internals->m_stray_markers[m].positionMM.z * cmn_mm);
+    }
+}
+
+
+void mtsAtracsysFusionTrack::ProcessRGBStereoFrame() {
+    if (!m_internals->m_images_enabled) {
+        return;
+    }
+
+    // Image frames
+    m_internals->ExtractLeftImage(m_left_image_raw);
+    m_internals->ExtractRightImage(m_right_image_raw);
+    m_left_image_raw.Valid() = true;
+    m_right_image_raw.Valid() = true;
 }

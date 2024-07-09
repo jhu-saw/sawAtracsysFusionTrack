@@ -48,6 +48,8 @@ if (cisst_FOUND_AS_REQUIRED)
     endif ()
   endif ()
 
+  find_package(OpenCV REQUIRED)
+
   # catkin/ROS paths
   cisst_set_output_path ()
 
@@ -89,12 +91,15 @@ if (cisst_FOUND_AS_REQUIRED)
     add_library (sawAtracsysFusionTrack ${IS_SHARED}
       ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackExport.h
       code/mtsAtracsysFusionTrack.cpp
-      ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
+      code/mtsAtracsysStereo.cpp
+      ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h
+      ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysStereo.h)
     set_target_properties (sawAtracsysFusionTrack PROPERTIES
       VERSION ${sawAtracsysFusionTrack_VERSION}
       FOLDER "sawAtracsysFusionTrack")
     cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
     target_link_libraries (sawAtracsysFusionTrack ${AtracsysSDK_LIBRARIES})
+    target_link_libraries (sawAtracsysFusionTrack ${OpenCV_LIBS})
 
     configure_file (
       "${sawAtracsysFusionTrack_SOURCE_DIR}/code/sawAtracsysFusionTrackConfig.h.in"
