@@ -683,10 +683,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 
 void mtsAtracsysFusionTrack::Startup(void)
 {
-    // trigger event so connected component can bridge crtk provided interface as needed
     m_configuration_state_table.Start();
-    m_crtk_interfaces_provided.push_back(mtsDescriptionInterfaceFullName("localhost", this->Name, "Controller"));
-    m_crtk_interfaces_provided_updated();
 
     // reports system found
     m_controller_interface->SendStatus(this->GetName() + ": found device SN " + std::to_string(m_internals->m_sn));
@@ -701,6 +698,8 @@ void mtsAtracsysFusionTrack::Startup(void)
     m_right_camera_info.Valid() = ok;
 
     m_configuration_state_table.Advance();
+
+    m_crtk_interfaces_provided_updated();
 }
 
 

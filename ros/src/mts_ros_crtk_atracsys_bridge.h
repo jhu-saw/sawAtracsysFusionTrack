@@ -40,6 +40,15 @@ class mts_ros_crtk_atracsys_bridge: public mts_ros_crtk_bridge
                 const double _publish_period_in_seconds,
                 const double _tf_period_in_seconds);
 
+    using mts_ros_crtk_bridge::bridge_interface_provided; // bring all overloads into scope before overriding
+
+    virtual void bridge_interface_provided(const std::string & _component_name,
+                                          const std::string & _interface_name,
+                                          const double _publish_period_in_seconds
+                                          = cisst_ros_crtk::bridge_provided_default_publish_period,
+                                          const double _tf_period_in_seconds
+                                          = cisst_ros_crtk::bridge_provided_default_tf_period) override;
+
     void bridge_tool_error(const std::string & _component_name,
                            const std::string & _interface_name);
 };

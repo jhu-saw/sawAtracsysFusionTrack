@@ -101,14 +101,7 @@ int main(int argc, char * argv[])
         = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", rosNode);
 
     crtk_bridge->bridge(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
-    std::string stereo_namespace = tracker->GetName() + "/stereo";
-    cisst_ral::clean_namespace(stereo_namespace);
-    crtk_bridge->bridge_interface_provided(stereo->GetName(), "stereo", stereo_namespace, rosPeriod, tfPeriod);
-
-    auto num_tools = tracker->GetNumberOfTools();
-    for (size_t i = 0; i < num_tools; ++i) {
-        crtk_bridge->bridge_tool_error(tracker->GetName(), tracker->GetToolName(i));
-    }
+    crtk_bridge->bridge_interface_provided(stereo->GetName(), "stereo", tracker->GetName() + "/stereo", rosPeriod, tfPeriod);
 
     componentManager->AddComponent(crtk_bridge);
     crtk_bridge->Connect();
