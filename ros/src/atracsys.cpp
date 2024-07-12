@@ -81,6 +81,11 @@ int main(int argc, char * argv[])
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("atracsys");
     tracker->Configure(jsonConfigFile);
 
+    if (!tracker->HardwareInitialized()) {
+        CMN_LOG_INIT_ERROR << "Failed to initialize Atracsys hardware --- is device connected and powered on?" << std::endl;
+        return -1;
+    }
+
     mtsAtracsysStereo * stereo = new mtsAtracsysStereo("stereo", tracker->GetName());
     stereo->Configure(jsonConfigFile);
 

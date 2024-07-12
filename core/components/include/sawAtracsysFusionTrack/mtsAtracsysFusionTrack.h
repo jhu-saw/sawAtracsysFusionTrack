@@ -99,6 +99,8 @@ class CISST_EXPORT mtsAtracsysFusionTrack: public mtsTaskContinuous
 
     std::string GetToolName(const size_t index) const;
 
+    bool HardwareInitialized() const;
+
 protected:
 
     /*! Code called by all constructors. */

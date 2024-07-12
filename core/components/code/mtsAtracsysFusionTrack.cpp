@@ -422,6 +422,7 @@ public:
 
     ftkLibrary m_library;
     uint64 m_sn;
+    ftkDeviceType m_device_type;
     ftkFrameQuery * m_frame_query;
     ftkMarker * m_tools;
     ftk3DFiducial * m_stray_markers;
@@ -443,11 +444,12 @@ private:
     const uint32_t option_id_export_calibration = 181;
 };
 
-static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType CMN_UNUSED(type))
+static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType type)
 {
-    uint64 * lastDevice = reinterpret_cast<uint64 *>(user);
-    if (lastDevice) {
-        *lastDevice = device;
+    mtsAtracsysFusionTrackInternals* internals = reinterpret_cast<mtsAtracsysFusionTrackInternals*>(user);
+    if (internals) {
+        internals->m_sn = device;
+        internals->m_device_type = type;
     }
 }
 
@@ -519,7 +521,7 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         // search for devices
         ftkError error = ftkEnumerateDevices(m_internals->m_library,
                                              mtsAtracsysFusionTrackDeviceEnum,
-                                             &(m_internals->m_sn));
+                                             m_internals);
         if (error != FTK_ERROR_NS::FTK_OK) {
             CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
                                      << this->GetName() << ")" << std::endl;
@@ -538,8 +540,11 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
         return;
     }
 
+    CMN_LOG_CLASS_INIT_VERBOSE << "Configure: found device SN " << m_internals->m_sn << std::endl;
+
     if (filename == "") {
         m_internals->SetupFrameQuery(m_tools.size(), m_stray_markers_max);
+        m_internals->m_configured = true;
         return;
     }
 
@@ -757,7 +762,6 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
                                      const bool isJson,
                                      const std::string & referenceName)
 {
-
     // check if this tool already exists
     auto tool_iterator = m_tools.find(toolName);
     if (tool_iterator != m_tools.end()) {
@@ -886,6 +890,10 @@ std::string mtsAtracsysFusionTrack::GetToolName(const size_t index) const
         toolIterator++;
     }
     return toolIterator->first;
+}
+
+bool mtsAtracsysFusionTrack::HardwareInitialized() const {
+    return m_internals->m_configured;
 }
 
 void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
