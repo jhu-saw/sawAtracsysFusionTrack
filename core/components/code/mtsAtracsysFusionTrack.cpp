@@ -223,15 +223,70 @@ class mtsAtracsysFusionTrackInternals
 {
 public:
     mtsAtracsysFusionTrackInternals():
-        m_library(0),
+        m_library(nullptr),
         m_sn(0),
         m_frame_query(nullptr),
         m_configured(false),
         m_images_enabled(false)
     {}
 
+    ~mtsAtracsysFusionTrackInternals() {
+        if (m_frame_query != nullptr) {
+            delete m_frame_query;
+        }
+
+        if (m_library != nullptr) {
+            ftkClose(&m_library);
+        }
+    }
+
+    bool Initialize()
+    {
+        ftkBuffer buffer;
+        ftkVersion(&buffer);
+        CMN_LOG_INIT_VERBOSE << "Atracsys SDK Version " << buffer.data << std::endl;
+
+        // initialize SDK
+        m_library = ftkInit();
+        if (m_library == nullptr) {
+            CMN_LOG_INIT_ERROR << "Configure: unable to initialize Atracsys SDK" << std::endl;
+            return false;
+        }
+
+        size_t max_attempts = 10;
+        for (size_t attempt = 0; attempt < max_attempts; attempt++) {
+            // search for devices
+            ftkError error = ftkEnumerateDevices(m_library, DeviceEnumerateCallback, this);
+            if (error != FTK_ERROR_NS::FTK_OK) {
+                CMN_LOG_INIT_ERROR << "Configure: unable to enumerate Atracsys devices" << std::endl;
+            }
+
+            if (m_sn != 0) {
+                break;
+            }
+        }
+
+        if (m_sn == 0) {
+            CMN_LOG_INIT_ERROR << "Configure: no Atracsys device connected" << std::endl;
+            return false;
+        }
+
+        ftkError error = ftkEnumerateOptions(m_library, 0, OptionEnumerateCallback, this);
+        if (error != FTK_ERROR_NS::FTK_OK && error != ftkError::FTK_WAR_OPT_GLOBAL_ONLY) {
+            CMN_LOG_INIT_ERROR << "Configure: unable to enumerate supported global library options" << std::endl;
+        }
+
+        error = ftkEnumerateOptions(m_library, m_sn, OptionEnumerateCallback, this);
+        if (error != FTK_ERROR_NS::FTK_OK) {
+            CMN_LOG_INIT_ERROR << "Configure: unable to enumerate supported device options" << std::endl;
+        }
+
+        return true;
+    }
+
     void SetupFrameQuery(const size_t number_of_tools,
-                         const size_t number_of_stray_markers) {
+                         const size_t number_of_stray_markers)
+    {
         if (m_frame_query) {
             delete m_frame_query;
         }
@@ -253,13 +308,17 @@ public:
             CMN_LOG_INIT_ERROR << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions failed" << std::endl;
         } else {
             CMN_LOG_INIT_VERBOSE << "mtsAtracsysFusionTrackInternals: ftkSetFrameOptions ok" << std::endl;
+            m_configured = true;
         }
     }
 
     std::string QueryDeviceType()
     {
+        auto option = m_device_options.find(option_sTk_device_type);
+        if (option == m_device_options.end()) { return ""; }
+
         ftkBuffer buffer;
-        ftkError status = ftkGetData(m_library, m_sn, option_id_sTk_device_type, &buffer);
+        ftkError status = ftkGetData(m_library, m_sn, option->second.id, &buffer);
         if (status != ftkError::FTK_OK) return "";
 
         std::string device_type(buffer.data);
@@ -267,48 +326,42 @@ public:
         return device_type;
     }
 
-    ftkError ConfigureImageSending(bool enabled)
+    bool ConfigureImageSending(bool enabled, int sl_period, int dots)
     {
-        ftkBuffer buffer;
-        buffer.reset();
-        std::string frame_pattern = "S";
-        std::memcpy(buffer.uData, frame_pattern.c_str(), frame_pattern.length());
-        buffer.size = frame_pattern.length();
+        bool ok;
 
-        ftkError status = ftkSetData(m_library, m_sn, option_id_image_pattern, &buffer);
-        if (status != ftkError::FTK_OK) {
-            return status;
+        // No structured light, IR frames only
+        if (sl_period <= 0) {
+            ok = SetStringOption(option_image_pattern, "I");
+        // One structured light frame per period, others are IR
+        } else {
+            std::string pattern = std::string(sl_period - 1, 'I') + "S";
+            ok = SetStringOption(option_image_pattern, pattern);
         }
+
+        if (!ok) { return false; }
 
         int32_t enabled_value = enabled ? 1 : 0;
-        status = ftkSetInt32(m_library, m_sn, option_id_enable_images_sending, enabled_value);
-        if (status == ftkError::FTK_OK) {
+        ok = SetIntOption(option_enable_images_sending, enabled_value);
+        if (ok) {
             m_images_enabled = enabled;
         } else {
-            return status;
+            return false;
         }
 
-        status = ftkSetInt32(m_library, m_sn, option_id_vis_integration_time, 16000);
-        if (status != ftkError::FTK_OK) {
-            return status;
-        }
+        ok = SetIntOption(option_vis_integration_time, 16000);
+        if (!ok) { return false; }
 
-        status = ftkSetInt32(m_library, m_sn, option_id_sl_integration_time, 16000);
-        if (status != ftkError::FTK_OK) {
-            return status;
-        }
+        ok = SetIntOption(option_sl_integration_time, 16000);
+        if (!ok) { return false; }
 
-        status = ftkSetInt32(m_library, m_sn, option_id_num_enabled_dot_projector, 3);
-        if (status != ftkError::FTK_OK) {
-            return status;
-        }
+        ok = SetIntOption(option_num_enabled_dot_projector, dots);
+        if (!ok) { return false; }
 
-        status = ftkSetInt32(m_library, m_sn, option_id_dot_projector_strobe_time, 16000);
-        if (status != ftkError::FTK_OK) {
-            return status;
-        }
+        ok = SetIntOption(option_dot_projector_strobe_time, 16000);
+        if (!ok) { return false; }
 
-        return ftkError::FTK_OK;
+        return true;
     }
 
     void ExtractImage(uint8_t *pixels, prmImageFrame& dest)
@@ -349,15 +402,8 @@ public:
     // Retrieve stereo camera calibration from device, return true/false for success/error
     bool RetrieveStereoCameraCalibration(prmCameraInfo& left, prmCameraInfo& right, vct3& rotation, vct3& translation)
     {
-        ftkError status;
-
-        status = ftkSetInt32(m_library, m_sn, option_id_export_calibration, 1);
-        if (status != ftkError::FTK_OK) {
-
-            CMN_LOG_RUN_ERROR << "Error enabling stereo calibration export: "
-                                    << static_cast<int>(status) << std::endl;
-            return false;
-        }
+        bool ok = SetIntOption(option_export_calibration, 1);
+        if (!ok) { return false; }
 
         // need initialized frame query to retrieve camera calibration
         if (!m_frame_query) {
@@ -366,6 +412,7 @@ public:
 
         int attempts = 0;
         int max_attempts = 20;
+        ftkError status;
 
         do {
             status = ftkGetLastFrame(m_library, m_sn, m_frame_query, 100u);
@@ -373,16 +420,12 @@ public:
 
         if (status != ftkError::FTK_OK) {
             CMN_LOG_RUN_ERROR << "Error retrieving stereo calibration frame: "
-                                    << static_cast<int>(status) << std::endl;
+                              << static_cast<int>(status) << std::endl;
             return false;
         }
 
-        status = ftkSetInt32(m_library, m_sn, option_id_export_calibration, 0);
-        if (status != ftkError::FTK_OK) {
-            CMN_LOG_RUN_ERROR << "Error disabling stereo calibration export: "
-                                    << static_cast<int>(status) << std::endl;
-            return false;
-        }
+        ok = SetIntOption(option_export_calibration, 0);
+        if (!ok) { return false; }
 
         ftkFrameInfoData frame_info;
         frame_info.WantedInformation = ftkInformationType::CalibrationParameters;
@@ -390,7 +433,7 @@ public:
         status = ftkExtractFrameInfo(m_frame_query, &frame_info);
         if (status != ftkError::FTK_OK) {
             CMN_LOG_RUN_ERROR << "Error extracting frame info for stereo calibration: "
-                                    << static_cast<int>(status) << std::endl;
+                              << static_cast<int>(status) << std::endl;
             return false;
         }
 
@@ -434,24 +477,99 @@ public:
     GeometryIdToToolMap GeometryIdToTool;
 
 private:
-    const uint32_t option_id_sTk_device_type = 221;
-    const uint32_t option_id_enable_images_sending = 6003;
-    const uint32_t option_id_image_pattern = 199;
-    const uint32_t option_id_vis_integration_time = 193;
-    const uint32_t option_id_sl_integration_time = 194;
-    const uint32_t option_id_num_enabled_dot_projector = 110;
-    const uint32_t option_id_dot_projector_strobe_time = 197;
-    const uint32_t option_id_export_calibration = 181;
-};
+    std::map<std::string, ftkOptionsInfo> m_device_options;
 
-static void mtsAtracsysFusionTrackDeviceEnum(uint64 device, void * user, ftkDeviceType type)
-{
-    mtsAtracsysFusionTrackInternals* internals = reinterpret_cast<mtsAtracsysFusionTrackInternals*>(user);
-    if (internals) {
+    const std::string option_sTk_device_type = "sTk device type";
+    const std::string option_enable_images_sending = "Enable images sending";
+    const std::string option_image_pattern = "Image Scheduler Pattern";;
+    const std::string option_vis_integration_time = "Image Integration Time for VIS frames";
+    const std::string option_sl_integration_time = "Image Integration Time for SL frames";
+    const std::string option_num_enabled_dot_projector = "Enable dot projectors";
+    const std::string option_dot_projector_strobe_time = "Dot projectors Strobe Time for SL frames";
+    const std::string option_export_calibration = "Calibration export";
+
+    bool SetIntOption(const std::string& option_name, int32_t value) {
+        auto option = m_device_options.find(option_name);
+        if (option == m_device_options.end()) {
+            CMN_LOG_RUN_ERROR << "option \"" << option_name << "\" not supported by device" << std::endl;
+            return false;
+        }
+
+        ftkError status;
+        auto id = option->second.id;
+        int32_t min, max;
+        status = ftkGetInt32(m_library, m_sn, id, &min, ftkOptionGetter::FTK_MIN_VAL);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_INIT_ERROR << "error getting min for device option \"" << option_name << "\""
+                               << ": " << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        status = ftkGetInt32(m_library, m_sn, id, &max, ftkOptionGetter::FTK_MAX_VAL);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_INIT_ERROR << "error getting max for device option \"" << option_name << "\""
+                               << ": " << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        if (value < min || value > max) {
+            CMN_LOG_RUN_ERROR << "value " << value
+                              << " out of range [" << min << ".." << max << "]"
+                              << " for device option \"" << option_name << "\"" << std::endl;
+            return false;
+        }
+
+        status = ftkSetInt32(m_library, m_sn, id, value);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_INIT_ERROR << "error setting device option \"" << option_name << "\""
+                               << ": " << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    bool SetStringOption(const std::string& option_name, std::string value) {
+        auto option = m_device_options.find(option_name);
+        if (option == m_device_options.end()) {
+            CMN_LOG_RUN_ERROR << "option \"" << option_name << "\" not supported by device" << std::endl;
+            return false;
+        }
+
+        auto id = option->second.id;
+
+        ftkBuffer buffer;
+        buffer.reset();
+        std::memcpy(buffer.uData, value.c_str(), value.length());
+        buffer.size = value.length();
+
+        ftkError status = ftkSetData(m_library, m_sn, id, &buffer);
+        if (status != ftkError::FTK_OK) {
+            CMN_LOG_INIT_ERROR << "error setting device option \"" << option_name << "\""
+                               << ": " << static_cast<int>(status) << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    static void DeviceEnumerateCallback(uint64 device, void* user, ftkDeviceType type)
+    {
+        mtsAtracsysFusionTrackInternals* internals = reinterpret_cast<mtsAtracsysFusionTrackInternals*>(user);
+        if (!internals) { return; }
+
         internals->m_sn = device;
         internals->m_device_type = type;
     }
-}
+
+    static void OptionEnumerateCallback(uint64 CMN_UNUSED(sn), void* user, ftkOptionsInfo* oi)
+    {
+        mtsAtracsysFusionTrackInternals* internals = reinterpret_cast<mtsAtracsysFusionTrackInternals*>(user);
+        if (!internals) { return; }
+
+        internals->m_device_options[oi->name] = *oi;
+    }
+};
 
 void mtsAtracsysFusionTrack::Init(void)
 {
@@ -499,52 +617,17 @@ void mtsAtracsysFusionTrack::Init(void)
 void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 {
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: using " << filename << std::endl;
-    ftkBuffer buffer;
 
-    ftkVersion(&buffer);
-    CMN_LOG_CLASS_INIT_VERBOSE << "Atracsys SDK Version " << buffer.data << std::endl;
-
-#if 0
-    if (ftkGetData(m_internals->m_library, 0LL, FTK_OPT_DRIVER_VER, &buffer) != SDK_FTK_OK)
-        CMN_LOG_CLASS_INIT_WARNING << "Configure: failed to get Atracsys Driver version" << std::endl;
-#endif
-
-    // initialize fusion track library
-    m_internals->m_library = ftkInit();
-    if (!m_internals->m_library) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to initialize ("
+    bool ok = m_internals->Initialize();
+    if (!ok) {
+        CMN_LOG_INIT_ERROR << "Configure: no device connected ("
                                  << this->GetName() << ")" << std::endl;
-        return;
-    }
-
-    for (size_t i = 0; i < 10; i++) {
-        // search for devices
-        ftkError error = ftkEnumerateDevices(m_internals->m_library,
-                                             mtsAtracsysFusionTrackDeviceEnum,
-                                             m_internals);
-        if (error != FTK_ERROR_NS::FTK_OK) {
-            CMN_LOG_CLASS_INIT_ERROR << "Configure: unable to enumerate devices ("
-                                     << this->GetName() << ")" << std::endl;
-            ftkClose(&m_internals->m_library);
-        }
-
-        if (m_internals->m_sn != 0LL) {
-            break;
-        }
-    }
-
-    if (m_internals->m_sn == 0LL) {
-        CMN_LOG_CLASS_INIT_ERROR << "Configure: no device connected ("
-                                 << this->GetName() << ")" << std::endl;
-        ftkClose(&m_internals->m_library);
-        return;
     }
 
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: found device SN " << m_internals->m_sn << std::endl;
 
     if (filename == "") {
         m_internals->SetupFrameQuery(m_tools.size(), m_stray_markers_max);
-        m_internals->m_configured = true;
         return;
     }
 
@@ -623,11 +706,11 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
             const Json::Value iniTool = jsonValue["ini-file"];
             const Json::Value jsonTool = jsonValue["json-file"];
             if (iniTool.empty() && jsonTool.empty()) {
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
+                CMN_LOG_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
                                          << toolName << "\" in configuration file \""
                                          << filename << "\", neither was found" << std::endl;
             } else if (!iniTool.empty() && !jsonTool.empty()) {
-                CMN_LOG_CLASS_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
+                CMN_LOG_INIT_ERROR << "Configure: you need to define either \"ini-file\" or \"json-file\" for the tool \""
                                          << toolName << "\" in configuration file \""
                                          << filename << "\", both were found" << std::endl;
                 exit(EXIT_FAILURE);
@@ -667,9 +750,27 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
             CMN_LOG_CLASS_INIT_VERBOSE << "device type: " << device_type << std::endl;
         }
 
-        ftkError status = m_internals->ConfigureImageSending(true);
-        if (status != ftkError::FTK_OK) {
-            CMN_LOG_CLASS_INIT_ERROR << "failed to enabled image sending: " <<  static_cast<int>(status) << std::endl;
+        const Json::Value stereo_config = jsonConfig["stereo"];
+
+        const Json::Value video = stereo_config["video"];
+        bool video_enabled = stereo_config.isMember("video") && video.isBool() && video.asBool();
+        const Json::Value depth = stereo_config["depth"];
+        bool depth_enabled = stereo_config.isMember("depth") && depth.isBool() && depth.asBool();
+        // video processing is required for depth map computation
+        video_enabled = depth_enabled || video_enabled;
+
+        const Json::Value dots_config = stereo_config["num_dot_projectors"];
+        bool dots_configured = stereo_config.isMember("num_dot_projectors") && dots_config.isInt();
+        int enabled_dot_projectors = dots_configured ? dots_config.asInt() : 1;
+        if (!depth_enabled) {
+            enabled_dot_projectors = 0;
+        }
+
+        int sl_period = depth_enabled ? 5 : 0;
+
+        bool ok = m_internals->ConfigureImageSending(video_enabled, sl_period, enabled_dot_projectors);
+        if (!ok) {
+            CMN_LOG_CLASS_INIT_ERROR << "failed to enabled image sending" << std::endl;
         }
     }
 
@@ -677,7 +778,6 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: calling SetupFrameQuery for " << m_tools.size() << " tool(s) and up to "
                                << m_stray_markers_max << " stray marker(s)" << std::endl;
     m_internals->SetupFrameQuery(m_tools.size(), m_stray_markers_max);
-    m_internals->m_configured = true;
 }
 
 
@@ -708,7 +808,7 @@ void mtsAtracsysFusionTrack::Run(void)
     // process mts commands
     ProcessQueuedCommands();
 
-    if (m_internals->m_library == 0LL) {
+    if (!HardwareInitialized()) {
         return;
     }
 
@@ -750,10 +850,7 @@ void mtsAtracsysFusionTrack::Run(void)
 }
 
 
-void mtsAtracsysFusionTrack::Cleanup(void)
-{
-    ftkClose(&m_internals->m_library);
-}
+void mtsAtracsysFusionTrack::Cleanup(void) {}
 
 
 bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
@@ -764,7 +861,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     // check if this tool already exists
     auto tool_iterator = m_tools.find(toolName);
     if (tool_iterator != m_tools.end()) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << toolName << " already exists" << std::endl;
+        CMN_LOG_INIT_ERROR << "AddTool: " << toolName << " already exists" << std::endl;
         return false;
     }
 
@@ -773,7 +870,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     if (_referenceName != "") {
         referenceIterator = m_tools.find(_referenceName);
         if (referenceIterator == m_tools.end()) {
-            CMN_LOG_CLASS_INIT_ERROR << "AddTool: can't find reference \"" << _referenceName
+            CMN_LOG_INIT_ERROR << "AddTool: can't find reference \"" << _referenceName
                                      << "\" for tool \"" << toolName
                                      << "\".  Make sure reference frames/tools are created earlier in the config file."
                                      << std::endl;
@@ -802,14 +899,14 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
                                        << geometry.positions[index].z << ")" << std::endl;
         }
     } else {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: failed to parse geometry file \""
+        CMN_LOG_INIT_ERROR << "AddTool: failed to parse geometry file \""
                                  << fileName << "\" for tool \"" << toolName << "\"" << std::endl;
         return false;
     }
 
     ftkError error = ftkSetGeometry(m_internals->m_library, m_internals->m_sn, &geometry);
     if (error != FTK_ERROR_NS::FTK_OK) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
+        CMN_LOG_INIT_ERROR << "AddTool: unable to set geometry for tool \"" << toolName
                                  << "\" using geometry file \"" << fileName
                                  << "\" (" << this->GetName() << ")" << std::endl;
         return false;
@@ -825,7 +922,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     const mtsAtracsysFusionTrackInternals::GeometryIdToToolMap::const_iterator
         toolIterator = m_internals->GeometryIdToTool.find(geometry.geometryId);
     if (toolIterator != m_internals->GeometryIdToTool.end()) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: error, found an existing tool with the same Id "
+        CMN_LOG_INIT_ERROR << "AddTool: error, found an existing tool with the same Id "
                                  << geometry.geometryId << " for tool \"" << toolName << "\"" << std::endl;
         return false;
     }
@@ -836,7 +933,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     // create an interface for tool
     tool->m_interface = AddInterfaceProvided(toolName);
     if (!tool->m_interface) {
-        CMN_LOG_CLASS_INIT_ERROR << "AddTool: " << tool->m_name << " already exists" << std::endl;
+        CMN_LOG_INIT_ERROR << "AddTool: " << tool->m_name << " already exists" << std::endl;
         delete tool;
         return false;
     }
