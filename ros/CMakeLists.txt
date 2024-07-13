@@ -78,7 +78,7 @@ if (cisst_FOUND_AS_REQUIRED)
     include_directories (${CATKIN_DEVEL_PREFIX}/include ${sawAtracsysFusionTrack_INCLUDE_DIR})
     link_directories (${sawAtracsysFusionTrack_LIBRARY_DIR})
 
-    add_executable (atracsys src/atracsys.cpp src/mts_ros_crtk_atracsys_bridge.cpp src/mts_ros_crtk_atracsys_bridge.h)
+    add_executable (atracsys src/atracsys.cpp src/atracsys_bridge.cpp src/atracsys_bridge.h)
     target_link_libraries (atracsys
       ${sawAtracsysFusionTrack_LIBRARIES}
       ${catkin_LIBRARIES}

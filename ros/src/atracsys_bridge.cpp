@@ -16,7 +16,7 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
-#include "mts_ros_crtk_atracsys_bridge.h"
+#include "atracsys_bridge.h"
 
 #include <algorithm>
 #include <iostream>
@@ -24,9 +24,9 @@ http://www.cisst.org/cisst/license.txt.
 // cisst
 #include <cisst_ros_bridge/mtsROSBridge.h>
 
-CMN_IMPLEMENT_SERVICES(mts_ros_crtk_atracsys_bridge);
+CMN_IMPLEMENT_SERVICES(atracsys_bridge);
 
-void mts_ros_crtk_atracsys_bridge::bridge(const std::string & _component_name,
+void atracsys_bridge::bridge(const std::string & _component_name,
                                           const std::string & _interface_name,
                                           const double _publish_period_in_seconds,
                                           const double _tf_period_in_seconds)
@@ -49,7 +49,7 @@ void mts_ros_crtk_atracsys_bridge::bridge(const std::string & _component_name,
                                     _tf_period_in_seconds);
 }
 
-void mts_ros_crtk_atracsys_bridge::bridge_interface_provided(const std::string & _component_name,
+void atracsys_bridge::bridge_interface_provided(const std::string & _component_name,
                                           const std::string & _interface_name,
                                           const double _publish_period_in_seconds,
                                           const double _tf_period_in_seconds) {
@@ -60,7 +60,7 @@ void mts_ros_crtk_atracsys_bridge::bridge_interface_provided(const std::string &
     bridge_tool_error(_component_name, _interface_name);
 }
 
-void mts_ros_crtk_atracsys_bridge::bridge_tool_error(const std::string & _component_name,
+void atracsys_bridge::bridge_tool_error(const std::string & _component_name,
                                                      const std::string & _interface_name)
 {
     mtsManagerLocal * _component_manager = mtsComponentManager::GetInstance();

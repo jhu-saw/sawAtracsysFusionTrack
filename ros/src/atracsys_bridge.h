@@ -16,23 +16,23 @@ http://www.cisst.org/cisst/license.txt.
 --- end cisst license ---
 */
 
-#ifndef _mts_ros_crtk_atracsys_bridge_h
-#define _mts_ros_crtk_atracsys_bridge_h
+#ifndef _atracsys_bridge_h
+#define _atracsys_bridge_h
 
 #include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
 
-class mts_ros_crtk_atracsys_bridge: public mts_ros_crtk_bridge
+class atracsys_bridge: public mts_ros_crtk_bridge
 {
     CMN_DECLARE_SERVICES(CMN_NO_DYNAMIC_CREATION, CMN_LOG_ALLOW_DEFAULT);
 
  public:
-    inline mts_ros_crtk_atracsys_bridge(const std::string & _component_name,
+    inline atracsys_bridge(const std::string & _component_name,
                                         cisst_ral::node_ptr_t _node_handle,
                                         const double _period_in_seconds = 5.0 * cmn_ms):
         mts_ros_crtk_bridge(_component_name, _node_handle, _period_in_seconds)
     {}
 
-    inline ~mts_ros_crtk_atracsys_bridge() {}
+    inline ~atracsys_bridge() {}
 
     /*! Everything needed to bridge the sawAtracsysTracker component */
     void bridge(const std::string & _component_name,
@@ -53,6 +53,6 @@ class mts_ros_crtk_atracsys_bridge: public mts_ros_crtk_bridge
                            const std::string & _interface_name);
 };
 
-CMN_DECLARE_SERVICES_INSTANTIATION(mts_ros_crtk_atracsys_bridge);
+CMN_DECLARE_SERVICES_INSTANTIATION(atracsys_bridge);
 
-#endif // _mts_ros_crtk_atracsys_bridge_h
+#endif // _atracsys_bridge_h

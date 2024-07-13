@@ -26,7 +26,7 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
-#include "mts_ros_crtk_atracsys_bridge.h"
+#include "atracsys_bridge.h"
 
 #include <QApplication>
 #include <QMainWindow>
@@ -97,14 +97,13 @@ int main(int argc, char * argv[])
                               stereo->GetName(), "StereoRaw");
 
     // ROS CRTK bridge
-    mts_ros_crtk_atracsys_bridge * crtk_bridge
-        = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", rosNode);
+    atracsys_bridge * bridge = new atracsys_bridge("atracsys_bridge", rosNode);
 
-    crtk_bridge->bridge(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
-    crtk_bridge->bridge_interface_provided(stereo->GetName(), "stereo", tracker->GetName() + "/stereo", rosPeriod, tfPeriod);
+    bridge->bridge(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
+    bridge->bridge_interface_provided(stereo->GetName(), "stereo", tracker->GetName() + "/stereo", rosPeriod, tfPeriod);
 
-    componentManager->AddComponent(crtk_bridge);
-    crtk_bridge->Connect();
+    componentManager->AddComponent(bridge);
+    bridge->Connect();
 
     // create a Qt user interface
     QApplication application(argc, argv);
