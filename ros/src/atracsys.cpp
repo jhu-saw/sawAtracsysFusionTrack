@@ -97,12 +97,12 @@ int main(int argc, char * argv[])
                               stereo->GetName(), "StereoRaw");
 
     // ROS CRTK bridge
-    atracsys_bridge * bridge = new atracsys_bridge("atracsys_bridge", rosNode);
-
-    bridge->bridge(tracker->GetName(), "Controller", rosPeriod, tfPeriod);
-    bridge->bridge_interface_provided(stereo->GetName(), "stereo", tracker->GetName() + "/stereo", rosPeriod, tfPeriod);
-
+    atracsys_bridge * bridge = new atracsys_bridge("atracsys_bridge", rosNode, rosPeriod, tfPeriod);
     componentManager->AddComponent(bridge);
+
+    bridge->bridge_controller(tracker->GetName(), "Controller");
+    bridge->bridge_stereo(stereo->GetName(), "stereo", tracker->GetName() + "/stereo");
+
     bridge->Connect();
 
     // create a Qt user interface

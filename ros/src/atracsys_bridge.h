@@ -19,38 +19,39 @@ http://www.cisst.org/cisst/license.txt.
 #ifndef _atracsys_bridge_h
 #define _atracsys_bridge_h
 
-#include <cisst_ros_crtk/mts_ros_crtk_bridge.h>
+#include <cisst_ros_crtk/mts_ros_crtk_bridge_provided.h>
 
-class atracsys_bridge: public mts_ros_crtk_bridge
+class atracsys_bridge: public mts_ros_crtk_bridge_provided
 {
     CMN_DECLARE_SERVICES(CMN_NO_DYNAMIC_CREATION, CMN_LOG_ALLOW_DEFAULT);
 
- public:
-    inline atracsys_bridge(const std::string & _component_name,
-                                        cisst_ral::node_ptr_t _node_handle,
-                                        const double _period_in_seconds = 5.0 * cmn_ms):
-        mts_ros_crtk_bridge(_component_name, _node_handle, _period_in_seconds)
-    {}
+public:
+    atracsys_bridge(const std::string& component_name,
+                    cisst_ral::node_ptr_t node_handle,
+                    double ros_period = 5.0 * cmn_ms,
+                    double tf_period = 5.0 * cmn_ms);
 
-    inline ~atracsys_bridge() {}
+    void bridge_controller(const std::string& _component_name,
+                const std::string& _interface_name);
 
-    /*! Everything needed to bridge the sawAtracsysTracker component */
-    void bridge(const std::string & _component_name,
+    void bridge_stereo(const std::string & _component_name,
                 const std::string & _interface_name,
-                const double _publish_period_in_seconds,
-                const double _tf_period_in_seconds);
+                const std::string & _ros_namespace);
 
-    using mts_ros_crtk_bridge::bridge_interface_provided; // bring all overloads into scope before overriding
+protected:
+    mtsROSBridge* m_pub_bridge;
 
-    virtual void bridge_interface_provided(const std::string & _component_name,
-                                          const std::string & _interface_name,
-                                          const double _publish_period_in_seconds
-                                          = cisst_ros_crtk::bridge_provided_default_publish_period,
-                                          const double _tf_period_in_seconds
-                                          = cisst_ros_crtk::bridge_provided_default_tf_period) override;
+    const double m_ros_period;
+    const double m_tf_period;
 
-    void bridge_tool_error(const std::string & _component_name,
-                           const std::string & _interface_name);
+    // source factory for tools
+    mtsFunctionRead m_get_factory_sources;
+    std::set<mtsDescriptionInterfaceFullName> m_bridged_sources;
+    void sources_update_handler();
+
+    void bridge_tool(const std::string & _component_name,
+                     const std::string & _interface_name,
+                     const std::string & _ros_namespace);
 };
 
 CMN_DECLARE_SERVICES_INSTANTIATION(atracsys_bridge);
