@@ -349,16 +349,13 @@ public:
             return false;
         }
 
-        ok = SetIntOption(option_vis_integration_time, 16000);
-        if (!ok) { return false; }
-
         ok = SetIntOption(option_sl_integration_time, 16000);
         if (!ok) { return false; }
 
         ok = SetIntOption(option_num_enabled_dot_projector, dots);
         if (!ok) { return false; }
 
-        ok = SetIntOption(option_dot_projector_strobe_time, 16000);
+        ok = SetIntOption(option_dot_projector_strobe_time, 8000);
         if (!ok) { return false; }
 
         return true;
@@ -786,7 +783,9 @@ void mtsAtracsysFusionTrack::Startup(void)
     m_configuration_state_table.Start();
 
     // reports system found
-    m_controller_interface->SendStatus(this->GetName() + ": found device SN " + std::to_string(m_internals->m_sn));
+    std::string status_message = this->GetName() + ": found device SN " + std::to_string(m_internals->m_sn)
+                                         + ", type " + m_internals->QueryDeviceType();
+    m_controller_interface->SendStatus(status_message);
     // set reference frame for measured_cp_array
     m_measured_cp_array.ReferenceFrame() = this->Name;
 
@@ -819,7 +818,6 @@ void mtsAtracsysFusionTrack::Run(void)
                                       100u);
 
     // negative error codes are warnings
-    m_measured_cp_array.SetValid(true);
     if (status != FTK_ERROR_NS::FTK_OK) {
         if (static_cast<int>(status) < 0) {
             CMN_LOG_CLASS_RUN_WARNING << "Warning: " << static_cast<int>(status) << std::endl;
@@ -829,6 +827,8 @@ void mtsAtracsysFusionTrack::Run(void)
             return;
         }
     }
+
+    m_measured_cp_array.SetValid(true);
 
     ftkPixelFormat frame_format = m_internals->m_frame_query->imageHeader->format;
     switch (frame_format)
@@ -975,6 +975,7 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     return true;
 }
 
+
 std::string mtsAtracsysFusionTrack::GetToolName(const size_t index) const
 {
     ToolsType::const_iterator toolIterator = m_tools.begin();
@@ -988,15 +989,40 @@ std::string mtsAtracsysFusionTrack::GetToolName(const size_t index) const
     return toolIterator->first;
 }
 
-bool mtsAtracsysFusionTrack::HardwareInitialized() const {
+
+bool mtsAtracsysFusionTrack::HardwareInitialized() const
+{
     return m_internals->m_configured;
 }
 
-void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
+
+void mtsAtracsysFusionTrack::ProcessIRTrackingFrame()
+{
+    ProcessTools();
+    ProcessStrayMarkers();
+}
+
+
+void mtsAtracsysFusionTrack::ProcessRGBStereoFrame()
+{
+    if (!m_internals->m_images_enabled) {
+        return;
+    }
+
+    // Image frames
+    m_internals->ExtractLeftImage(m_left_image_raw);
+    m_internals->ExtractRightImage(m_right_image_raw);
+    m_left_image_raw.Valid() = true;
+    m_right_image_raw.Valid() = true;
+}
+
+
+void mtsAtracsysFusionTrack::ProcessTools()
+{
     // check results of last frame
     switch (m_internals->m_frame_query->markersStat) {
     case FTK_QS_NS::QS_WAR_SKIPPED:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: marker fields in the frame are not set correctly" << std::endl;
+        CMN_LOG_CLASS_RUN_ERROR << "Run: marker field is not written" << std::endl;
         break;
     case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.markersVersionSize is invalid" << std::endl;
@@ -1051,7 +1077,7 @@ void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
         }
     }
 
-    // finalize all tools
+    // make pose relative to reference frame and finalize all tools
     for (iter = m_tools.begin(); iter != end; ++iter) {
         auto reference = iter->second->m_reference_measured_cp;
         if (reference == nullptr) {
@@ -1066,19 +1092,23 @@ void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
         }
         iter->second->m_state_table.Advance();
     }
+}
 
+
+void mtsAtracsysFusionTrack::ProcessStrayMarkers()
+{
     // ---- 3D Fiducials, aka stray markers ---
     switch (m_internals->m_frame_query->threeDFiducialsStat) {
     case FTK_QS_NS::QS_WAR_SKIPPED:
-        //CMN_LOG_CLASS_RUN_ERROR << "Run: 3D status fields in the frame is not set correctly" << std::endl;
-        break;
+        CMN_LOG_CLASS_RUN_ERROR << "Run: 3D fiducials fields not written" << std::endl;
+        return;
     case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
         CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
+        return;
+    case FTK_QS_NS::QS_OK:
         break;
     default:
-        // CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
-        break;
-    case FTK_QS_NS::QS_OK:
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
         break;
     }
 
@@ -1086,21 +1116,9 @@ void mtsAtracsysFusionTrack::ProcessIRTrackingFrame() {
     m_measured_cp_array.Positions().resize(stray_count);
 
     for (uint32 m = 0; m < stray_count; m++) {
-        m_measured_cp_array.Positions().at(m).Translation().Assign(m_internals->m_stray_markers[m].positionMM.x * cmn_mm,
-                                                                   m_internals->m_stray_markers[m].positionMM.y * cmn_mm,
-                                                                   m_internals->m_stray_markers[m].positionMM.z * cmn_mm);
+        auto& marker_translation = m_measured_cp_array.Positions().at(m).Translation();
+        marker_translation.Assign(m_internals->m_stray_markers[m].positionMM.x * cmn_mm,
+                                  m_internals->m_stray_markers[m].positionMM.y * cmn_mm,
+                                  m_internals->m_stray_markers[m].positionMM.z * cmn_mm);
     }
-}
-
-
-void mtsAtracsysFusionTrack::ProcessRGBStereoFrame() {
-    if (!m_internals->m_images_enabled) {
-        return;
-    }
-
-    // Image frames
-    m_internals->ExtractLeftImage(m_left_image_raw);
-    m_internals->ExtractRightImage(m_right_image_raw);
-    m_left_image_raw.Valid() = true;
-    m_right_image_raw.Valid() = true;
 }

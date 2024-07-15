@@ -92,7 +92,7 @@ protected:
     bool m_video_enabled;
     bool m_depth_enabled;
 
-    bool m_local_block_matching;
+    bool m_global_block_matching;
     bool m_filter_depth_map;
 
     cv::Mat m_left_undistort_map_x, m_left_undistort_map_y;

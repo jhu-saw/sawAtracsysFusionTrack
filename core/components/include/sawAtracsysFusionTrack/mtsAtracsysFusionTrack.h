@@ -109,6 +109,9 @@ protected:
     void ProcessIRTrackingFrame();
     void ProcessRGBStereoFrame();
 
+    void ProcessTools();
+    void ProcessStrayMarkers();
+
     /*! Search path for configuration files */
     cmnPath m_path;
     
