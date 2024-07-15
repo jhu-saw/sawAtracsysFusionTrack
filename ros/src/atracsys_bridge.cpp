@@ -81,6 +81,10 @@ void atracsys_bridge::bridge_stereo(const std::string & _component_name,
     std::string clean_namespace = _ros_namespace;
     cisst_ral::clean_namespace(clean_namespace);
 
+    // bridge all CRTK-compatible topics from the controller
+    bridge_interface_provided(_component_name, _interface_name, clean_namespace,
+                              m_ros_period, m_tf_period);
+
     m_pub_bridge->AddPublisherFromCommandRead<prmImageFrame, CISST_RAL_MSG(sensor_msgs, Image)>
         (_interface_name, "left/image_rect_color", clean_namespace + "/left/image_rect_color");
 
