@@ -73,6 +73,33 @@ If you also want ROS topics corresponding to the tracked tools, try:
 rosrun atracsys atracsys -j config003.json
 ```
 
+### Configuration file format
+
+The JSON configuration files consists of a list of tools to track, and optionally configuration for the stereo image processing (for the spryTrack RGB devices). The `definition-path` property can optionally be set to a list of file paths to search tool definitions for --- by default, the search path for tool definition files is the current working directory, and the directory containing the configuration file.
+
+```json
+{
+  definition-path: ["additional tool definition search path", "another search path"],
+  tools: [
+    {
+      {
+        "name": "Marker3", // tool name, used in GUI display and in ROS topics for that tool
+        // provided tool definition as either json or ini
+        "json-file": "geometry003.json", // json tool definition file
+        "ini-file": "geometry003.ini" // or ini tool definition file
+      },
+    }
+  ],
+  stereo: {
+    "video": true, // (default false) provide rectified video streams
+    "depth": true, // (default false) compute 3D point cloud from stereo images
+    "filter_depth_map": true, // post-process depth map - improves quality at cost of some additional computation
+    "global_block_matching": true, // (default false) use (semi)global block matching algorithm instead of default local block matching
+    "num_dot_projectors": 3 // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching
+  }
+}
+```
+
 # Unable to find shared object file `libdevice64.so`
 
 When using ROS, we copy the SDK libraries in the ROS build tree so you shouldn't have to edit your LD_LIBRARY path.  If you still get some error messages re. missing libraries, you need to locate the libraries and edit your `LD_LIBRARY_PATH`.  Something like:
@@ -133,6 +160,14 @@ transform:
     w: -0.068462781014
 ---
 ```
+
+# Stereo processing
+
+For devices such as the spryTrack 300 RGB which provide RGB images and have dot projectors, stereo processing is provided to compute a dense 3D point cloud. This can be enabled via the configuration file as described above.
+
+Enabling the global block matching option may improve depth map quality, however it will often slow down processing significantly
+
+Enabling the depth map filtering algorithm will perform left-right consisteny checks to reject bad readings, and apply an edge-aware filtering algorithm to help reduce noise. This increases the computational cost of the stereo processing, particularly when the global block matching is enabled.
 
 # Known issues, features to add
 
