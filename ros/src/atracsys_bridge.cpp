@@ -98,7 +98,7 @@ void atracsys_bridge::bridge_stereo(const std::string & _component_name,
         (_interface_name, "right/camera_info", clean_namespace + "/right/camera_info");
 
     m_pub_bridge->AddPublisherFromCommandRead<prmDepthMap, CISST_RAL_MSG(sensor_msgs, PointCloud2)>
-        (_interface_name, "depth", clean_namespace + "/depth");
+        (_interface_name, "pointcloud", clean_namespace + "/pointcloud");
 
     mtsManagerLocal* componentManager = mtsManagerLocal::GetInstance();
     componentManager->Connect(m_pub_bridge->GetName(), _interface_name, _component_name, _interface_name);

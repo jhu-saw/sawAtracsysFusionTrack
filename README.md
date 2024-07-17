@@ -93,9 +93,10 @@ The JSON configuration files consists of a list of tools to track, and optionall
   stereo: {
     "video": true, // (default false) provide rectified video streams
     "depth": true, // (default false) compute 3D point cloud from stereo images
-    "filter_depth_map": true, // post-process depth map - improves quality at cost of some additional computation
-    "global_block_matching": true, // (default false) use (semi)global block matching algorithm instead of default local block matching
-    "num_dot_projectors": 3 // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching
+    "color_pointcloud": false, // (default false) add color to pointcloud output - enabling can slow down ROS publishing quite a bit
+    "filter_depth_map": false, // post-process depth map - can remove some noise, but may over-smooth regions
+    "global_block_matching": false, // (default false) use (semi)global block matching algorithm instead of default local block matching
+    "num_dot_projectors": 3 // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching. Valid range may depend on device model, but is 0 to 3 inclusive for the spryTrack 300.
   }
 }
 ```
@@ -163,11 +164,15 @@ transform:
 
 # Stereo processing
 
-For devices such as the spryTrack 300 RGB which provide RGB images and have dot projectors, stereo processing is provided to compute a dense 3D point cloud. This can be enabled via the configuration file as described above.
+For devices such as the spryTrack 300 RGB which provide RGB images and have dot projectors, stereo processing is provided to compute a dense 3D point cloud. This can be enabled via the configuration file as described above, which at minimum requires adding `"stereo": { "depth": true }` to the configuration file.
 
-Enabling the global block matching option may improve depth map quality, however it will often slow down processing significantly
+A good default configuration is to enabled depth map filtering, but keep global block matching disabled, this should provide a fairly good point cloud. The colored point cloud option can be enabled to make it easier to visualize the point cloud, but should otherwise be disabled since it degrades performance.
 
-Enabling the depth map filtering algorithm will perform left-right consisteny checks to reject bad readings, and apply an edge-aware filtering algorithm to help reduce noise. This increases the computational cost of the stereo processing, particularly when the global block matching is enabled.
+Enabling the global block matching option may improve depth map quality, however it will often slow down processing significantly.
+
+Enabling the depth map filtering algorithm will perform left-right consisteny checks to reject bad readings, and apply an edge-aware filtering algorithm to help reduce noise. This may help smooth the pointcloud in some situations, but the smoothing can also be detrimental so this option is disabled by default. Enabling this option will somewhat increase the computational cost of the stereo processing, particularly when the global block matching is enabled.
+
+Enabling the depth map filtering may also help to fill in holes in the point cloud.
 
 # Known issues, features to add
 

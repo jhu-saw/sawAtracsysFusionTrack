@@ -19,6 +19,8 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
 #include <sawAtracsysFusionTrack/sawAtracsysFusionTrackConfig.h>
 
+#include <limits>
+
 #include <ftkInterface.h>
 
 #include <cisstCommon/cmnPath.h>
@@ -38,7 +40,7 @@ void mtsAtracsysStereo::Init(void)
     StateTable.AddData(m_right_image, "right_image");
     StateTable.AddData(m_left_camera_info, "left_camera_info");
     StateTable.AddData(m_right_camera_info, "right_camera_info");
-    StateTable.AddData(m_depth, "depth");
+    StateTable.AddData(m_depth, "pointcloud");
 
     m_stereo_interface = AddInterfaceProvided("stereo");
     if (m_stereo_interface) {
@@ -46,7 +48,7 @@ void mtsAtracsysStereo::Init(void)
         m_stereo_interface->AddCommandReadState(StateTable, m_left_camera_info, "left/camera_info");
         m_stereo_interface->AddCommandReadState(StateTable, m_right_image, "right/image_rect_color");
         m_stereo_interface->AddCommandReadState(StateTable, m_right_camera_info, "right/camera_info");
-        m_stereo_interface->AddCommandReadState(StateTable, m_depth, "depth");
+        m_stereo_interface->AddCommandReadState(StateTable, m_depth, "pointcloud");
 
         m_stereo_interface->AddCommandReadState(StateTable, StateTable.PeriodStats, "period_statistics");
     }
@@ -64,6 +66,7 @@ void mtsAtracsysStereo::Init(void)
     m_pipline_initialized = false;
     m_video_enabled = false;
     m_depth_enabled = false;
+    m_color_pointcloud = false;
 
     m_global_block_matching = false;
     m_filter_depth_map = false;
@@ -150,16 +153,18 @@ void mtsAtracsysStereo::InitStereoPipeline()
 
     /// Create stereo matcher(s) and depth map filters
 
+    int block_size = 25;
+    int block_area = block_size * block_size;
     if (!m_global_block_matching) {
-        m_left_stereo_matcher = cv::StereoBM::create(784, 7);
+        m_left_stereo_matcher = cv::StereoBM::create(384, block_size);
     } else {
-        m_left_stereo_matcher = cv::StereoSGBM::create(0, 784, 7);
+        m_left_stereo_matcher = cv::StereoSGBM::create(0, 384, block_size, 8 * block_area, 28 * block_area, 0, 0, 10, 100, 1, cv::StereoSGBM::MODE_SGBM);
     }
 
     m_right_stereo_matcher = cv::ximgproc::createRightMatcher(m_left_stereo_matcher);
     m_wls_filter = cv::ximgproc::createDisparityWLSFilter(m_left_stereo_matcher);
     m_wls_filter->setLambda(8000.0);
-    m_wls_filter->setSigmaColor(1.4);
+    m_wls_filter->setSigmaColor(1.0);
 
     m_pipline_initialized = true;
 }
@@ -205,12 +210,19 @@ void mtsAtracsysStereo::ComputeDepth()
         disparity = left_disparity;
     }
     
-    // Disparity maps use fixed-point format, need to rescale by 1/16 to convert to floating point
-    disparity.convertTo(disparity, CV_32F, 1.0f/16.0, 0.0f);
+    // Disparity maps use fixed-point format, need to rescale by 1/DISP_SCALE (1/16) to convert to floating point
+    disparity.convertTo(disparity, CV_32F, 1.0f/cv::StereoMatcher::DISP_SCALE, 0.0f);
 
     // Use stereo calibration to convert from disparity to depth values
     cv::Mat depth;
     cv::reprojectImageTo3D(disparity, depth, disparity_to_depth, true, -1);
+
+    float opencv_bigz = 10000.0f;
+    float invalid = std::numeric_limits<float>::quiet_NaN();
+    cv::Mat z;
+    cv::extractChannel(depth, z, 2);
+    cv::Mat mask = (z<=0.0f) | (z==opencv_bigz);
+    depth.setTo(cv::Scalar(invalid, invalid, invalid), mask);
 
     m_depth.Width() = depth.cols;
     m_depth.Height() = depth.rows;
@@ -220,8 +232,12 @@ void mtsAtracsysStereo::ComputeDepth()
     m_depth.Points().resize(size);
     std::copy(reinterpret_cast<float*>(depth.data), reinterpret_cast<float*>(depth.data) + size, m_depth.Points().begin());
 
-    m_depth.Color().resize(m_left_image_mat.cols * m_left_image_mat.rows * m_left_image_mat.channels());
-    std::copy(m_left_image_mat.data, m_left_image_mat.data + size, m_depth.Color().begin());
+    if (m_color_pointcloud) {
+        m_depth.Color().resize(m_left_image_mat.cols * m_left_image_mat.rows * m_left_image_mat.channels());
+        std::copy(m_left_image_mat.data, m_left_image_mat.data + size, m_depth.Color().begin());
+    } else {
+        m_depth.Color().resize(0);
+    }
 }
 
 void mtsAtracsysStereo::Configure(const std::string & filename)
@@ -260,6 +276,9 @@ void mtsAtracsysStereo::Configure(const std::string & filename)
 
         // video processing is required for depth map computation
         m_video_enabled = m_depth_enabled || m_video_enabled;
+
+        const Json::Value color_pointcloud = stereo["color_pointcloud"];
+        m_color_pointcloud = stereo.isMember("color_pointcloud") && color_pointcloud.isBool() && color_pointcloud.asBool();
 
         const Json::Value global_bm = stereo["global_block_matching"];
         m_global_block_matching = stereo.isMember("global_block_matching") && global_bm.isBool() && global_bm.asBool();
