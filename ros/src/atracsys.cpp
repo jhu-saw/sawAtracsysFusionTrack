@@ -23,8 +23,11 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstMultiTask/mtsTaskManager.h>
 #include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
-#include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
+
+#if OpenCV_AVAILABLE
+#include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
+#endif
 
 #include "atracsys_bridge.h"
 
@@ -39,7 +42,7 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClassMatching("mtsAtracsysStereo", CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsAtracsysSteasdsreo", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
@@ -86,22 +89,30 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    mtsAtracsysStereo * stereo = new mtsAtracsysStereo("stereo", tracker->GetName());
-    stereo->Configure(jsonConfigFile);
-
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
+
+#if OpenCV_AVAILABLE
+    mtsAtracsysStereo * stereo = new mtsAtracsysStereo("stereo", tracker->GetName());
+    stereo->Configure(jsonConfigFile);
+
     componentManager->AddComponent(stereo);
     componentManager->Connect(tracker->GetName(), "StereoRaw",
                               stereo->GetName(), "StereoRaw");
+#else
+    std::cout << "OpenCV not available, so no stereo processing" << std::endl;
+#endif
 
     // ROS CRTK bridge
     atracsys_bridge * bridge = new atracsys_bridge("atracsys_bridge", rosNode, rosPeriod, tfPeriod);
     componentManager->AddComponent(bridge);
 
     bridge->bridge_controller(tracker->GetName(), "Controller");
+
+#if OpenCV_AVAILABLE
     bridge->bridge_stereo(stereo->GetName(), "stereo", tracker->GetName() + "/stereo");
+#endif
 
     bridge->Connect();
 
