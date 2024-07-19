@@ -267,7 +267,7 @@ public:
         }
 
         if (m_sn == 0) {
-            CMN_LOG_INIT_ERROR << "Configure: no Atracsys device connected" << std::endl;
+            CMN_LOG_INIT_ERROR << "Configure: no Atracsys devices found" << std::endl;
             return false;
         }
 
@@ -617,8 +617,9 @@ void mtsAtracsysFusionTrack::Configure(const std::string & filename)
 
     bool ok = m_internals->Initialize();
     if (!ok) {
-        CMN_LOG_INIT_ERROR << "Configure: no device connected ("
+        CMN_LOG_INIT_ERROR << "Configure: failed to initialize device ("
                                  << this->GetName() << ")" << std::endl;
+        return;
     }
 
     CMN_LOG_CLASS_INIT_VERBOSE << "Configure: found device SN " << m_internals->m_sn << std::endl;
@@ -1100,15 +1101,19 @@ void mtsAtracsysFusionTrack::ProcessStrayMarkers()
     // ---- 3D Fiducials, aka stray markers ---
     switch (m_internals->m_frame_query->threeDFiducialsStat) {
     case FTK_QS_NS::QS_WAR_SKIPPED:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: 3D fiducials fields not written" << std::endl;
+        CMN_LOG_CLASS_RUN_ERROR << "Stray markers: 3D fiducials fields not written" << std::endl;
         return;
     case FTK_QS_NS::QS_ERR_INVALID_RESERVED_SIZE:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: frame.threeDFiducialsVersionSize is invalid" << std::endl;
+        CMN_LOG_CLASS_RUN_ERROR << "Stray markers: frame.threeDFiducialsVersionSize must be multiple of fiducial type size" << std::endl;
         return;
+    case FTK_QS_NS::QS_ERR_OVERFLOW:
+        CMN_LOG_CLASS_RUN_ERROR << "Stray markers: too many stray markers detected --- try covering metallic/reflective surfaces" << std::endl;
+        break;
     case FTK_QS_NS::QS_OK:
         break;
     default:
-        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status" << std::endl;
+        int status = static_cast<int>(m_internals->m_frame_query->threeDFiducialsStat);
+        CMN_LOG_CLASS_RUN_ERROR << "Run: invalid status " << status << std::endl;
         break;
     }
 

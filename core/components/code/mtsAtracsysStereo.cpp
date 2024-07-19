@@ -153,12 +153,21 @@ void mtsAtracsysStereo::InitStereoPipeline()
 
     /// Create stereo matcher(s) and depth map filters
 
+    double fx = m_left_camera_info.Intrinsic().at(0, 0);
+    double b = translation.Norm();
+    int max_disparity = std::ceil(fx*b/m_min_depth);
+    max_disparity = max_disparity - (max_disparity % 16); // required to be multiple of 16
+
+    // See OpenCV docs for parameter description
     int block_size = 25;
     int block_area = block_size * block_size;
     if (!m_global_block_matching) {
-        m_left_stereo_matcher = cv::StereoBM::create(384, block_size);
+        m_left_stereo_matcher = cv::StereoBM::create(max_disparity, block_size);
     } else {
-        m_left_stereo_matcher = cv::StereoSGBM::create(0, 384, block_size, 8 * block_area, 28 * block_area, 0, 0, 10, 100, 1, cv::StereoSGBM::MODE_SGBM);
+        m_left_stereo_matcher = cv::StereoSGBM::create(0, max_disparity, block_size,
+                                                       8*block_area, 32*block_area,
+                                                       0, 0, 20,
+                                                       50, 1, cv::StereoSGBM::MODE_SGBM);
     }
 
     m_right_stereo_matcher = cv::ximgproc::createRightMatcher(m_left_stereo_matcher);
@@ -217,12 +226,12 @@ void mtsAtracsysStereo::ComputeDepth()
     cv::Mat depth;
     cv::reprojectImageTo3D(disparity, depth, disparity_to_depth, true, -1);
 
-    float opencv_bigz = 10000.0f;
+    float opencv_bigz = 10000.0f; // defined arbitrarily in OpenCV source code, unforunately not exposed
     float invalid = std::numeric_limits<float>::quiet_NaN();
     cv::Mat z;
     cv::extractChannel(depth, z, 2);
-    cv::Mat mask = (z<=0.0f) | (z==opencv_bigz);
-    depth.setTo(cv::Scalar(invalid, invalid, invalid), mask);
+    cv::Mat invalid_mask = (z<=0.0f) | (z==opencv_bigz);
+    depth.setTo(cv::Scalar(invalid, invalid, invalid), invalid_mask);
 
     m_depth.Width() = depth.cols;
     m_depth.Height() = depth.rows;
@@ -285,6 +294,9 @@ void mtsAtracsysStereo::Configure(const std::string & filename)
 
         const Json::Value filter_depth = stereo["filter_depth_map"];
         m_filter_depth_map = stereo.isMember("filter_depth_map") && filter_depth.isBool() && filter_depth.asBool();
+
+        const Json::Value min_depth = stereo["min_depth"];
+        m_min_depth = (stereo.isMember("min_depth") && min_depth.isDouble()) ? min_depth.asDouble() : 1.35;
     }
 }
 

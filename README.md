@@ -96,7 +96,8 @@ The JSON configuration files consists of a list of tools to track, and optionall
     "color_pointcloud": false, // (default false) add color to pointcloud output - enabling can slow down ROS publishing quite a bit
     "filter_depth_map": false, // post-process depth map - can remove some noise, but may over-smooth regions
     "global_block_matching": false, // (default false) use (semi)global block matching algorithm instead of default local block matching
-    "num_dot_projectors": 3 // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching. Valid range may depend on device model, but is 0 to 3 inclusive for the spryTrack 300.
+    "num_dot_projectors": 3, // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching. Valid range may depend on device model, but is 0 to 3 inclusive for the spryTrack 300.
+    "min_depth": 1.0 // (default 1.35 meters) minimum depth (from camera) that will be measured. Due to stereo geometry, measuring closer distances results in reduced viewport.
   }
 }
 ```

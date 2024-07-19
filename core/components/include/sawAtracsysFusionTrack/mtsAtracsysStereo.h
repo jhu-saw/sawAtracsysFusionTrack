@@ -95,6 +95,7 @@ protected:
 
     bool m_global_block_matching;
     bool m_filter_depth_map;
+    double m_min_depth;
 
     cv::Mat m_left_undistort_map_x, m_left_undistort_map_y;
     cv::Mat m_right_undistort_map_x, m_right_undistort_map_y;
