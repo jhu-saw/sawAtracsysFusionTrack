@@ -86,15 +86,32 @@ if (cisst_FOUND_AS_REQUIRED)
 
     cisst_add_config_files (sawAtracsysFusionTrack)
 
-    add_library (sawAtracsysFusionTrack ${IS_SHARED}
+    set (sawAtracsysFusionTrack_SOURCES
       ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackExport.h
       code/mtsAtracsysFusionTrack.cpp
-      ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h)
+      ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h
+    )
+
+    find_package(OpenCV)
+    if (OpenCV_FOUND)
+      set (sawAtracsysFusionTrack_SOURCES ${sawAtracsysFusionTrack_SOURCES}
+        code/mtsAtracsysStereo.cpp
+        ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysStereo.h
+      )
+    endif (OpenCV_FOUND)
+
+    add_library (sawAtracsysFusionTrack ${IS_SHARED} ${sawAtracsysFusionTrack_SOURCES})
     set_target_properties (sawAtracsysFusionTrack PROPERTIES
       VERSION ${sawAtracsysFusionTrack_VERSION}
       FOLDER "sawAtracsysFusionTrack")
     cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
     target_link_libraries (sawAtracsysFusionTrack ${AtracsysSDK_LIBRARIES})
+
+    if (OpenCV_FOUND)
+      target_link_libraries (sawAtracsysFusionTrack ${OpenCV_LIBS})
+    endif (OpenCV_FOUND)
+
+    target_link_libraries (sawAtracsysFusionTrack ${OpenCV_LIBS})
 
     configure_file (
       "${sawAtracsysFusionTrack_SOURCE_DIR}/code/sawAtracsysFusionTrackConfig.h.in"

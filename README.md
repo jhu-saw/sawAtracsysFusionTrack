@@ -73,6 +73,35 @@ If you also want ROS topics corresponding to the tracked tools, try:
 rosrun atracsys atracsys -j config003.json
 ```
 
+### Configuration file format
+
+The JSON configuration files consists of a list of tools to track, and optionally configuration for the stereo image processing (for the spryTrack RGB devices). The `definition-path` property can optionally be set to a list of file paths to search tool definitions for --- by default, the search path for tool definition files is the current working directory, and the directory containing the configuration file.
+
+```json
+{
+  definition-path: ["additional tool definition search path", "another search path"],
+  tools: [
+    {
+      {
+        "name": "Marker3", // tool name, used in GUI display and in ROS topics for that tool
+        // provided tool definition as either json or ini
+        "json-file": "geometry003.json", // json tool definition file
+        "ini-file": "geometry003.ini" // or ini tool definition file
+      },
+    }
+  ],
+  stereo: {
+    "video": true, // (default false) provide rectified video streams
+    "depth": true, // (default false) compute 3D point cloud from stereo images
+    "color_pointcloud": false, // (default false) add color to pointcloud output - enabling can slow down ROS publishing quite a bit
+    "filter_depth_map": false, // post-process depth map - can remove some noise, but may over-smooth regions
+    "global_block_matching": false, // (default false) use (semi)global block matching algorithm instead of default local block matching
+    "num_dot_projectors": 3, // (default 0 if depth = false, 1 if depth = true) how many dot projector pairs to turn on - dot projectors add texture to images, increasing quality of stereo correspondence matching. Valid range may depend on device model, but is 0 to 3 inclusive for the spryTrack 300.
+    "min_depth": 1.0 // (default 1.35 meters) minimum depth (from camera) that will be measured. Due to stereo geometry, measuring closer distances results in reduced viewport.
+  }
+}
+```
+
 # Unable to find shared object file `libdevice64.so`
 
 When using ROS, we copy the SDK libraries in the ROS build tree so you shouldn't have to edit your LD_LIBRARY path.  If you still get some error messages re. missing libraries, you need to locate the libraries and edit your `LD_LIBRARY_PATH`.  Something like:
@@ -133,6 +162,18 @@ transform:
     w: -0.068462781014
 ---
 ```
+
+# Stereo processing
+
+For devices such as the spryTrack 300 RGB which provide RGB images and have dot projectors, stereo processing is provided to compute a dense 3D point cloud. This can be enabled via the configuration file as described above, which at minimum requires adding `"stereo": { "depth": true }` to the configuration file.
+
+A good default configuration is to enabled depth map filtering, but keep global block matching disabled, this should provide a fairly good point cloud. The colored point cloud option can be enabled to make it easier to visualize the point cloud, but should otherwise be disabled since it degrades performance.
+
+Enabling the global block matching option may improve depth map quality, however it will often slow down processing significantly.
+
+Enabling the depth map filtering algorithm will perform left-right consisteny checks to reject bad readings, and apply an edge-aware filtering algorithm to help reduce noise. This may help smooth the pointcloud in some situations, but the smoothing can also be detrimental so this option is disabled by default. Enabling this option will somewhat increase the computational cost of the stereo processing, particularly when the global block matching is enabled.
+
+Enabling the depth map filtering may also help to fill in holes in the point cloud.
 
 # Known issues, features to add
 

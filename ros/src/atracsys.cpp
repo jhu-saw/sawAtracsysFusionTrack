@@ -25,7 +25,11 @@ http://www.cisst.org/cisst/license.txt.
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
 
-#include "mts_ros_crtk_atracsys_bridge.h"
+#if OpenCV_AVAILABLE
+#include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
+#endif
+
+#include "atracsys_bridge.h"
 
 #include <QApplication>
 #include <QMainWindow>
@@ -38,6 +42,7 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsAtracsysSteasdsreo", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
@@ -79,22 +84,37 @@ int main(int argc, char * argv[])
     mtsAtracsysFusionTrack * tracker = new mtsAtracsysFusionTrack("atracsys");
     tracker->Configure(jsonConfigFile);
 
+    if (!tracker->HardwareInitialized()) {
+        CMN_LOG_INIT_ERROR << "Failed to initialize Atracsys hardware --- is device connected and powered on?" << std::endl;
+        return -1;
+    }
+
     // add the components to the component manager
     mtsManagerLocal * componentManager = mtsComponentManager::GetInstance();
     componentManager->AddComponent(tracker);
 
+#if OpenCV_AVAILABLE
+    mtsAtracsysStereo * stereo = new mtsAtracsysStereo("stereo", tracker->GetName());
+    stereo->Configure(jsonConfigFile);
+
+    componentManager->AddComponent(stereo);
+    componentManager->Connect(tracker->GetName(), "StereoRaw",
+                              stereo->GetName(), "StereoRaw");
+#else
+    std::cout << "OpenCV not available, so no stereo processing" << std::endl;
+#endif
+
     // ROS CRTK bridge
-    mts_ros_crtk_atracsys_bridge * crtk_bridge
-        = new mts_ros_crtk_atracsys_bridge("atracsys_crtk_bridge", rosNode);
-    crtk_bridge->add_factory_source("atracsys", "Controller", rosPeriod, tfPeriod);
+    atracsys_bridge * bridge = new atracsys_bridge("atracsys_bridge", rosNode, rosPeriod, tfPeriod);
+    componentManager->AddComponent(bridge);
 
-    auto num_tools = tracker->GetNumberOfTools();
-    for (size_t i = 0; i < num_tools; ++i) {
-        crtk_bridge->bridge_tool_error("atracsys", tracker->GetToolName(i));
-    }
+    bridge->bridge_controller(tracker->GetName(), "Controller");
 
-    componentManager->AddComponent(crtk_bridge);
-    crtk_bridge->Connect();
+#if OpenCV_AVAILABLE
+    bridge->bridge_stereo(stereo->GetName(), "stereo", tracker->GetName() + "/stereo");
+#endif
+
+    bridge->Connect();
 
     // create a Qt user interface
     QApplication application(argc, argv);
@@ -119,7 +139,7 @@ int main(int argc, char * argv[])
     prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
         = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
     positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
-    positionQtWidgetFactory->AddFactorySource("atracsys", "Controller");
+    positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
     positionQtWidgetFactory->Connect();
     tabWidget->addTab(positionQtWidgetFactory, "Tools");
