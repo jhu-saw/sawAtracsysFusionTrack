@@ -92,12 +92,14 @@ if (cisst_FOUND_AS_REQUIRED)
       ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrack.h
     )
 
-    find_package(OpenCV)
+    find_package(OpenCV QUIET)
     if (OpenCV_FOUND)
       set (sawAtracsysFusionTrack_SOURCES ${sawAtracsysFusionTrack_SOURCES}
         code/mtsAtracsysStereo.cpp
         ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysStereo.h
       )
+    else ()
+      message (STATUS "sawAtracsysFusionTrack: not building stereo video support (OpenCV not found)")
     endif (OpenCV_FOUND)
 
     add_library (sawAtracsysFusionTrack ${IS_SHARED} ${sawAtracsysFusionTrack_SOURCES})

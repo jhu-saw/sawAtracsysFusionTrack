@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2021-12-21
 
-  (C) Copyright 2021-2024 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2021-2025 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -25,6 +25,7 @@ http://www.cisst.org/cisst/license.txt.
 
 #cmakedefine01 AtracsysSDK_HAS_FTK_OK
 #cmakedefine01 AtracsysSDK_HAS_QS_OK
+#cmakedefine01 AtracsysSDK_HAS_ftkCameraParameters
 
 // to support different SDKs/namespaces
 #if AtracsysSDK_HAS_FTK_OK

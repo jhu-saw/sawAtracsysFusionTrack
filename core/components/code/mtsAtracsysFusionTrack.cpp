@@ -5,7 +5,7 @@
   Author(s):  Anton Deguet
   Created on: 2014-07-17
 
-  (C) Copyright 2014-2024 Johns Hopkins University (JHU), All Rights Reserved.
+  (C) Copyright 2014-2025 Johns Hopkins University (JHU), All Rights Reserved.
 
 --- begin cisst license - do not edit ---
 
@@ -382,6 +382,7 @@ public:
         ExtractImage(m_frame_query->imageRightPixels, dest);
     }
 
+#if AtracsysSDK_HAS_ftkCameraParameters
     // Convert ftkCameraParameters to standard 3x3 intrinsic matrix representation
     void CameraParamsToIntrinsicMatrix(ftkCameraParameters& params, vct3x3& intrinsic_out)
     {
@@ -459,6 +460,7 @@ public:
 
         return true;
     }
+#endif
 
     ftkLibrary m_library;
     uint64 m_sn;
@@ -790,10 +792,14 @@ void mtsAtracsysFusionTrack::Startup(void)
     // set reference frame for measured_cp_array
     m_measured_cp_array.ReferenceFrame() = this->Name;
 
+#if AtracsysSDK_HAS_ftkCameraParameters
     bool ok = m_internals->RetrieveStereoCameraCalibration(
         m_left_camera_info, m_right_camera_info,
         m_camera_rotation, m_camera_translation
     );
+#else
+    bool ok = false;
+#endif
     m_left_camera_info.Valid() = ok;
     m_right_camera_info.Valid() = ok;
 
@@ -838,12 +844,14 @@ void mtsAtracsysFusionTrack::Run(void)
         case ftkPixelFormat::GRAY16:
             ProcessIRTrackingFrame();
             break;
+#if AtracsysSDK_HAS_ftkCameraParameters
         case ftkPixelFormat::GRAY8_VIS:
         case ftkPixelFormat::GRAY16_VIS:
         case ftkPixelFormat::GRAY8_SL:
         case ftkPixelFormat::GRAY16_SL:
             ProcessRGBStereoFrame();
             break;
+#endif
         default:
             CMN_LOG_CLASS_RUN_WARNING << "Warning: unknown frame format: " << static_cast<int>(frame_format) << std::endl;
             break;

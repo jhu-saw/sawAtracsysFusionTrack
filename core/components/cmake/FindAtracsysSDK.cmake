@@ -84,5 +84,11 @@ if (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)
     int main(void) {
       static ftkQueryStatus _status = QS_OK;
     }" AtracsysSDK_HAS_QS_OK)
+  unset (AtracsysSDK_HAS_ftkCameraParameters CACHE)
+  check_cxx_source_compiles ("
+    #include <ftkInterface.h>
+    int main(void) {
+      static ftkCameraParameter parms;
+    }" AtracsysSDK_HAS_ftkCameraParameters)
 
 endif (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)
