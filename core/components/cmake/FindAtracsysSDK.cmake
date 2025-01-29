@@ -88,7 +88,7 @@ if (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)
   check_cxx_source_compiles ("
     #include <ftkInterface.h>
     int main(void) {
-      static ftkCameraParameter parms;
+      static ftkCameraParameters parms;
     }" AtracsysSDK_HAS_ftkCameraParameters)
 
 endif (AtracsysSDK_INCLUDE_DIR AND AtracsysSDK_LIBRARY_DIR)
