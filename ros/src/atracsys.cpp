@@ -42,7 +42,7 @@ int main(int argc, char * argv[])
     cmnLogger::SetMaskFunction(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskDefaultLog(CMN_LOG_ALLOW_ALL);
     cmnLogger::SetMaskClassMatching("mtsAtracsysFusionTrack", CMN_LOG_ALLOW_ALL);
-    cmnLogger::SetMaskClassMatching("mtsAtracsysSteasdsreo", CMN_LOG_ALLOW_ALL);
+    cmnLogger::SetMaskClassMatching("mtsAtracsysStereo", CMN_LOG_ALLOW_ALL);
     cmnLogger::AddChannel(std::cerr, CMN_LOG_ALLOW_ERRORS_AND_WARNINGS);
 
     // create ROS node handle
