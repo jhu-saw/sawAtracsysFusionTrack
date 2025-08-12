@@ -109,7 +109,11 @@ void mtsAtracsysStereo::InitStereoPipeline()
     cv::Mat left_distortion = cv::Mat(5, 1, CV_64F, m_left_camera_info.DistortionParameters().Pointer());
     cv::Mat right_distortion = cv::Mat(5, 1, CV_64F, m_right_camera_info.DistortionParameters().Pointer());
 
-    cv::Size original_image_size = cv::Size(m_left_camera_info.Width(), m_left_camera_info.Height());
+    // adjust intrinsic matrices to account for any downsampling of the raw images
+    left_intrinsic.rowRange(0, 2) = left_intrinsic.rowRange(0, 2) / static_cast<double>(m_downsample_factor);
+    right_intrinsic.rowRange(0, 2) = right_intrinsic.rowRange(0, 2) / static_cast<double>(m_downsample_factor);
+
+    cv::Size original_image_size = cv::Size(m_left_camera_info.Width() / m_downsample_factor, m_left_camera_info.Height() / m_downsample_factor);
 
     cv::Mat R = cv::Mat(3, 1, CV_64F, rotation.Pointer());
     cv::Mat T = cv::Mat(3, 1, CV_64F, translation.Pointer());
@@ -159,7 +163,7 @@ void mtsAtracsysStereo::InitStereoPipeline()
     max_disparity = max_disparity - (max_disparity % 16); // required to be multiple of 16
 
     // See OpenCV docs for parameter description
-    int block_size = 25;
+    int block_size = 7;
     int block_area = block_size * block_size;
     if (!m_global_block_matching) {
         m_left_stereo_matcher = cv::StereoBM::create(max_disparity, block_size);
@@ -173,7 +177,7 @@ void mtsAtracsysStereo::InitStereoPipeline()
     m_right_stereo_matcher = cv::ximgproc::createRightMatcher(m_left_stereo_matcher);
     m_wls_filter = cv::ximgproc::createDisparityWLSFilter(m_left_stereo_matcher);
     m_wls_filter->setLambda(8000.0);
-    m_wls_filter->setSigmaColor(1.0);
+    m_wls_filter->setSigmaColor(0.6);
 
     m_pipline_initialized = true;
 }
@@ -182,11 +186,12 @@ void mtsAtracsysStereo::Rectify(prmImageFrame& raw, cv::Mat& rectified_mat, prmI
 {
     /// De-bayer image
     cv::Mat raw_bayer = cv::Mat(raw.Height(), raw.Width(), CV_8U, raw.Data().Pointer());
-    cv::Mat raw_rgb;
+    cv::Mat raw_rgb, downsampled_rgb;
     cv::cvtColor(raw_bayer, raw_rgb, cv::COLOR_BayerGR2BGR_EA);
 
     // Rectify
-    cv::remap(raw_rgb, rectified_mat, undistort_x, undistort_y, cv::INTER_LINEAR);
+    cv::resize(raw_rgb, downsampled_rgb, cv::Size(), 1.0/static_cast<double>(m_downsample_factor), 1.0/static_cast<double>(m_downsample_factor), cv::INTER_AREA);
+    cv::remap(downsampled_rgb, rectified_mat, undistort_x, undistort_y, cv::INTER_LINEAR);
 
     rectified.Width() = rectified_mat.cols;
     rectified.Height() = rectified_mat.rows;
@@ -285,6 +290,11 @@ void mtsAtracsysStereo::Configure(const std::string & filename)
 
         // video processing is required for depth map computation
         m_video_enabled = m_depth_enabled || m_video_enabled;
+
+        m_downsample_factor = 1;
+        if (stereo.isMember("downsample") && stereo["downsample"].isInt()) {
+            m_downsample_factor = stereo["downsample"].asInt();
+        }
 
         const Json::Value color_pointcloud = stereo["color_pointcloud"];
         m_color_pointcloud = stereo.isMember("color_pointcloud") && color_pointcloud.isBool() && color_pointcloud.asBool();

@@ -79,8 +79,8 @@ The JSON configuration files consists of a list of tools to track, and optionall
 
 ```json
 {
-  definition-path: ["additional tool definition search path", "another search path"],
-  tools: [
+  "definition-path": ["additional tool definition search path", "another search path"],
+  "tools": [
     {
       {
         "name": "Marker3", // tool name, used in GUI display and in ROS topics for that tool
@@ -90,9 +90,10 @@ The JSON configuration files consists of a list of tools to track, and optionall
       },
     }
   ],
-  stereo: {
+  "stereo": {
     "video": true, // (default false) provide rectified video streams
     "depth": true, // (default false) compute 3D point cloud from stereo images
+    "downsample": 4, // (default 1) downsample stereo images by e.g. 4x (per dimension) to improve stereo correspondence robustness and increase processing speed
     "color_pointcloud": false, // (default false) add color to pointcloud output - enabling can slow down ROS publishing quite a bit
     "filter_depth_map": false, // post-process depth map - can remove some noise, but may over-smooth regions
     "global_block_matching": false, // (default false) use (semi)global block matching algorithm instead of default local block matching

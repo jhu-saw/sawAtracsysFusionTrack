@@ -93,6 +93,7 @@ protected:
     bool m_depth_enabled;
     bool m_color_pointcloud;
 
+    int m_downsample_factor;
     bool m_global_block_matching;
     bool m_filter_depth_map;
     double m_min_depth;
