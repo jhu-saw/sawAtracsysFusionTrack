@@ -1,0 +1,20 @@
+/* -*- Mode: Javascript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+{
+    "tools":
+    [
+        {
+            "name": "Reference",
+            "ini-file": "geometry_ref.ini"
+        }
+        ,
+        {
+            "name": "Arm Tool",
+            "ini-file": "/home/rems/dev/rems/data/config/geometry_arm_recalibrated.ini"
+        }
+        ,
+        {
+            "name": "Tip Tool",
+            "ini-file": "/home/rems/dev/rems/data/config/geometry_tool.ini"
+        }
+    ]
+}

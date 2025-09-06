@@ -1,0 +1,4 @@
+{
+  "name": "atracsys",
+  "dependencies": ["cisst_ros_crtk", "sawAtracsysFusionTrackCore"]
+}
