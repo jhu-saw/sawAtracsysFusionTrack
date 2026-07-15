@@ -215,6 +215,9 @@ public:
     prmPositionCartesianGet m_local_measured_cp;
     prmPositionCartesianGet m_measured_cp;
     prmPositionCartesianGet * m_reference_measured_cp = nullptr;
+
+    prmPositionCartesianArrayGet m_marker_positions;
+
     double m_registration_error;
     mtsStateTable m_state_table;
 };
@@ -572,7 +575,7 @@ private:
 
 void mtsAtracsysFusionTrack::Init(void)
 {
-    m_stray_markers_max = 10;
+    m_stray_markers_max = 24;
     m_internals = new mtsAtracsysFusionTrackInternals();
 
     // configuration state table
@@ -968,12 +971,25 @@ bool mtsAtracsysFusionTrack::AddTool(const std::string & toolName,
     tool->m_state_table.AddData(tool->m_local_measured_cp, "local_measured_cp");
     tool->m_state_table.AddData(tool->m_measured_cp, "measured_cp");
     tool->m_state_table.AddData(tool->m_registration_error, "registration_error");
+    tool->m_state_table.AddData(tool->m_marker_positions, "marker_positions");
     tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_local_measured_cp, "local/measured_cp");
     tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_measured_cp, "measured_cp");
+    tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_marker_positions, "marker_positions");
     tool->m_interface->AddCommandReadState(tool->m_state_table, tool->m_registration_error, "registration_error");
     tool->m_interface->AddCommandReadState(tool->m_state_table,
                                            tool->m_state_table.PeriodStats,
                                            "period_statistics");
+
+ 
+    StateTable.AddData(m_left_image_raw, "left_image");
+    StateTable.AddData(m_right_image_raw, "right_image");
+
+    m_controller_interface = AddInterfaceProvided("Controller");
+    if (m_controller_interface) {
+        // system info
+        m_controller_interface->AddMessageEvents();
+        m_controller_interface->AddCommandReadState(StateTable, m_measured_cp_array, "measured_cp_array");
+
 
     // update list of crtk interfaces
     m_configuration_state_table.Start();
@@ -1083,6 +1099,52 @@ void mtsAtracsysFusionTrack::ProcessTools()
                 }
             }
             tool->m_registration_error = ft_tool.registrationErrorMM * cmn_mm;
+        }
+    }
+
+    if ( frame->sixtyFourFiducialsMarkersStat != ftkQueryStatus::QS_ERR_OVERFLOW ) {
+        for ( i = 0u; i < frame->sixtyFourFiducialsMarkersCount; ++i ) {
+            uint32 id = frame->sixtyFourFiducialsMarkers[ i ].geometryId;
+
+            auto toolIterator = m_internals->GeometryIdToTool.find(id);
+            if (toolIterator == m_internals->GeometryIdToTool.end()) {
+                continue;
+            }
+
+            uint32 marker_id = frame->sixtyFourFiducialsMarkers[ i ].id;
+
+            int marker_count = 0;
+            for ( size_t n = 0; n < FTK_MAX_FIDUCIALS_64; n++ )
+            {
+                uint32 fidId = frame->sixtyFourFiducialsMarkers[ i ].fiducialCorresp[ n ];
+                if ( fidId != INVALID_ID && frame->threeDFiducialsStat == ftkQueryStatus::QS_OK &&
+                     fidId < frame->threeDFiducialsCount )
+                {
+                    marker_count += 1;
+                    // Fiducials are displayed with geometry ids
+                    ftk3DFiducial& fid = frame->threeDFiducials[ fidId ];
+                    double x = 
+                    double y = fid.positionMM.y;
+                    double z = fid.positionMM.z;
+                }
+            }
+
+            toolIterator->m_marker_positions.Positions().resize(marker_count);
+
+            for ( size_t n = 0; n < FTK_MAX_FIDUCIALS_64; n++ )
+            {
+                uint32 fidId = frame->sixtyFourFiducialsMarkers[ i ].fiducialCorresp[ n ];
+                if ( fidId != INVALID_ID && frame->threeDFiducialsStat == ftkQueryStatus::QS_OK &&
+                     fidId < frame->threeDFiducialsCount )
+                {
+                    toolIterator->m_marker_positions.SetValid(true);
+                    toolIterator->m_marker_positions.Positions().at(n).Translation().Assign(
+                        fid.positionMM.x * cmn_mm,
+                        fid.positionMM.y * cmn_mm,
+                        fid.positionMM.z * cmn_mm
+                    );
+                }
+            }
         }
     }
 
