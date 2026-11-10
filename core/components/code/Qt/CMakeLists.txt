@@ -32,15 +32,18 @@ if (cisst_FOUND)
   include_directories (${CMAKE_CURRENT_BINARY_DIR})
   if (CISST_HAS_QT4)
     qt4_wrap_cpp (SAW_ATRACSYS_FUSION_TRACK_QT_WRAP_CPP
-                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackStrayMarkersQtWidget.h)
+                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackStrayMarkersQtWidget.h
+                  ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolsQtWidget.h)
   else (CISST_HAS_QT4)
     set (CMAKE_AUTOMOC ON)
   endif (CISST_HAS_QT4)
 
   add_library (sawAtracsysFusionTrackQt
                ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackStrayMarkersQtWidget.h
+               ${sawAtracsysFusionTrack_HEADER_DIR}/mtsAtracsysFusionTrackToolsQtWidget.h
                ${sawAtracsysFusionTrack_HEADER_DIR}/sawAtracsysFusionTrackQtExport.h
                mtsAtracsysFusionTrackStrayMarkersQtWidget.cpp
+               mtsAtracsysFusionTrackToolsQtWidget.cpp
                ${SAW_ATRACSYS_FUSION_TRACK_QT_WRAP_CPP})
   set_property (TARGET sawAtracsysFusionTrackQt PROPERTY FOLDER "sawAtracsysFusionTrack")
   target_link_libraries (sawAtracsysFusionTrackQt ${cisst_LIBRARIES})
