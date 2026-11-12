@@ -22,7 +22,7 @@ set (REQUIRED_CISST_LIBRARIES
 
 find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+if (cisst_FOUND)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
@@ -106,7 +106,7 @@ if (cisst_FOUND_AS_REQUIRED)
     set_target_properties (sawAtracsysFusionTrack PROPERTIES
       VERSION ${sawAtracsysFusionTrack_VERSION}
       FOLDER "sawAtracsysFusionTrack")
-    cisst_target_link_libraries (sawAtracsysFusionTrack ${REQUIRED_CISST_LIBRARIES})
+    target_link_libraries (sawAtracsysFusionTrack ${cisst_LIBRARIES})
     target_link_libraries (sawAtracsysFusionTrack ${AtracsysSDK_LIBRARIES})
 
     if (OpenCV_FOUND)
@@ -135,6 +135,6 @@ if (cisst_FOUND_AS_REQUIRED)
   else (AtracsysSDK_FOUND)
     message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires the Atracsys SDK.")
   endif (AtracsysSDK_FOUND)
-else (cisst_FOUND_AS_REQUIRED)
+else (cisst_FOUND)
   message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires ${REQUIRED_CISST_LIBRARIES}")
-endif (cisst_FOUND_AS_REQUIRED)
+endif (cisst_FOUND)

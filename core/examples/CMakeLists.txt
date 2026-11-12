@@ -27,7 +27,7 @@ set (REQUIRED_CISST_LIBRARIES
 # find cisst and make sure the required libraries have been compiled
 find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+if (cisst_FOUND)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
@@ -59,10 +59,10 @@ if (cisst_FOUND_AS_REQUIRED)
       )
 
     # link against cisst libraries (and dependencies)
-    cisst_target_link_libraries (sawAtracsysFusionTrackQtExample ${REQUIRED_CISST_LIBRARIES})
+    target_link_libraries (sawAtracsysFusionTrackQtExample ${cisst_LIBRARIES})
 
   else (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
     message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack and cisstQt")
   endif (sawAtracsysFusionTrack_FOUND AND CISST_HAS_QT)
 
-endif (cisst_FOUND_AS_REQUIRED)
+endif (cisst_FOUND)

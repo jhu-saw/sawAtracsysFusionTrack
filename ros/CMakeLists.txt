@@ -55,11 +55,11 @@ set (REQUIRED_CISST_LIBRARIES
   cisstMultiTaskQt
   cisstParameterTypes
   cisstParameterTypesQt
-  cisstQt)
+  )
 
 find_package (cisst 1.2.0 REQUIRED ${REQUIRED_CISST_LIBRARIES})
 
-if (cisst_FOUND_AS_REQUIRED)
+if (cisst_FOUND)
 
   # load cisst configuration
   include (${CISST_USE_FILE})
@@ -87,7 +87,7 @@ if (cisst_FOUND_AS_REQUIRED)
     endif (OpenCV_FOUND)
     target_compile_definitions(atracsys PRIVATE OpenCV_AVAILABLE=${OpenCV_FOUND})
 
-    cisst_target_link_libraries (atracsys ${REQUIRED_CISST_LIBRARIES})
+    target_link_libraries (atracsys ${cisst_LIBRARIES})
 
     install (TARGETS atracsys
       LIBRARY DESTINATION lib/${PROJECT_NAME}
@@ -107,4 +107,4 @@ if (cisst_FOUND_AS_REQUIRED)
     message ("Information: code in ${CMAKE_CURRENT_SOURCE_DIR} will not be compiled, it requires sawAtracsysFusionTrack")
   endif (sawAtracsysFusionTrack_FOUND)
 
-endif (cisst_FOUND_AS_REQUIRED)
+endif (cisst_FOUND)

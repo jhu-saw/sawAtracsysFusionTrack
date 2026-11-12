@@ -21,9 +21,9 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstCommon/cmnCommandLineOptions.h>
 #include <cisstCommon/cmnQt.h>
 #include <cisstMultiTask/mtsTaskManager.h>
-#include <cisstParameterTypes/prmPositionCartesianGetQtWidgetFactory.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrack.h>
 #include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackStrayMarkersQtWidget.h>
+#include <sawAtracsysFusionTrack/mtsAtracsysFusionTrackToolsQtWidget.h>
 
 #if OpenCV_AVAILABLE
 #include <sawAtracsysFusionTrack/mtsAtracsysStereo.h>
@@ -135,9 +135,9 @@ int main(int argc, char * argv[])
                               tracker->GetName(), "Controller");
     tabWidget->addTab(strayMarkersWidget, "Stray Markers");
 
-    // tool position widgets
-    prmPositionCartesianGetQtWidgetFactory * positionQtWidgetFactory
-        = new prmPositionCartesianGetQtWidgetFactory("positionQtWidgetFactory");
+    // tool position and registration error widgets
+    mtsAtracsysFusionTrackToolsQtWidget * positionQtWidgetFactory
+        = new mtsAtracsysFusionTrackToolsQtWidget("positionQtWidgetFactory");
     positionQtWidgetFactory->SetPrismaticRevoluteFactors(1.0 / cmn_mm, cmn180_PI); // to display values in mm and degrees
     positionQtWidgetFactory->AddFactorySource(tracker->GetName(), "Controller");
     componentManager->AddComponent(positionQtWidgetFactory);
